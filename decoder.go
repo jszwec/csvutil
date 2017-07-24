@@ -78,6 +78,9 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 //	// called if record's field is an empty string.
 // 	Field int `recenc:",omitempty"`
 //
+// 	// Decode ignores this field.
+// 	Field int `recenc:"-"`
+//
 // By default decode looks for "recenc" tag, but this can be changed by setting
 // Decoder.Tag field.
 //
