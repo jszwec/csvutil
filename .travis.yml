@@ -1,0 +1,14 @@
+language: go
+
+go:
+ - 1.7.x
+ - 1.8.x
+
+os:
+ - linux
+ - osx
+ 
+script:
+ - go vet ./...
+ - go install ./...
+ - go test -v ./...
