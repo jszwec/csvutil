@@ -1,4 +1,4 @@
-package recenc
+package csvutil
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ type UnmarshalTypeError struct {
 }
 
 func (e *UnmarshalTypeError) Error() string {
-	return "recenc: cannot unmarshal " + e.Value + " into Go value of type " + e.Type.String()
+	return "csvutil: cannot unmarshal " + e.Value + " into Go value of type " + e.Type.String()
 }
 
 // An UnsupportedTypeError is returned when attempting to decode an unsupported
@@ -27,7 +27,7 @@ type UnsupportedTypeError struct {
 }
 
 func (e *UnsupportedTypeError) Error() string {
-	return "recenc: unsupported type: " + e.Type.String()
+	return "csvutil: unsupported type: " + e.Type.String()
 }
 
 // An InvalidUnmarshalError describes an invalid argument passed to Decode.
@@ -38,16 +38,16 @@ type InvalidUnmarshalError struct {
 
 func (e *InvalidUnmarshalError) Error() string {
 	if e.Type == nil {
-		return "recenc: Decode(nil)"
+		return "csvutil: Decode(nil)"
 	}
 
 	if e.Type.Kind() != reflect.Ptr {
-		return "recenc: Decode(non-pointer " + e.Type.String() + ")"
+		return "csvutil: Decode(non-pointer " + e.Type.String() + ")"
 	}
 
 	if indirect(reflect.New(e.Type)).Type().Kind() != reflect.Struct {
-		return "recenc: Decode(non-struct pointer)"
+		return "csvutil: Decode(non-struct pointer)"
 	}
 
-	return "recenc: Decode(nil " + e.Type.String() + ")"
+	return "csvutil: Decode(nil " + e.Type.String() + ")"
 }

@@ -1,4 +1,4 @@
-package recenc
+package csvutil
 
 import (
 	"encoding"

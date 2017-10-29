@@ -1,4 +1,4 @@
-package recenc
+package csvutil
 
 // Reader provides the interface for reading a single record.
 //

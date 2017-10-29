@@ -1,7 +1,7 @@
-recenc [![GoDoc](https://godoc.org/github.com/jszwec/recenc?status.svg)](http://godoc.org/github.com/jszwec/recenc) [![Build Status](https://travis-ci.org/jszwec/recenc.svg?branch=master)](https://travis-ci.org/jszwec/recenc) [![Build status](https://ci.appveyor.com/api/projects/status/6t4i7j31he1pdsj9?svg=true)](https://ci.appveyor.com/project/jszwec/recenc)
+csvutil [![GoDoc](https://godoc.org/github.com/jszwec/csvutil?status.svg)](http://godoc.org/github.com/jszwec/csvutil) [![Build Status](https://travis-ci.org/jszwec/csvutil.svg?branch=master)](https://travis-ci.org/jszwec/csvutil) [![Build status](https://ci.appveyor.com/api/projects/status/6t4i7j31he1pdsj9?svg=true)](https://ci.appveyor.com/project/jszwec/csvutil)
 =================
 
-Package recenc provides fast and idiomatic way to decode string records such as CSV to struct types.
+package csvutil provides fast and idiomatic way to decode string records such as CSV to struct types.
 
 A string record, such as CSV, is held in []string type. Reader interface
 defined in this package can read such records. The example implementation
@@ -19,7 +19,7 @@ struct type.
 Installation
 ------------
 
-    go get github.com/jszwec/recenc
+    go get github.com/jszwec/csvutil
 
 Performance
 ------------
@@ -46,10 +46,10 @@ Simple CSV
 
 ```
 	type User struct {
-		ID   *int   `recenc:"id,omitempty"`
-		Name string `recenc:"name"`
-		City string `recenc:"city"`
-		Age  int    `recenc:"age"`
+		ID   *int   `csv:"id,omitempty"`
+		Name string `csv:"name"`
+		City string `csv:"city"`
+		Age  int    `csv:"age"`
 	}
 
 	csvReader := csv.NewReader(strings.NewReader(
@@ -57,7 +57,7 @@ Simple CSV
 			",alice,25,la\n" +
 			",bob,30,ny\n"))
 
-	dec, err := recenc.NewDecoder(csvReader)
+	dec, err := csv.NewDecoder(csvReader)
 	if err != nil {
 		log.Fatal(err)
 	}

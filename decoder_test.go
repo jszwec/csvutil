@@ -1,4 +1,4 @@
-package recenc
+package csvutil
 
 import (
 	"encoding/csv"
@@ -10,13 +10,13 @@ import (
 )
 
 type Embedded1 struct {
-	String string  `recenc:"string"`
-	Float  float64 `recenc:"float"`
+	String string  `csv:"string"`
+	Float  float64 `csv:"float"`
 }
 
 type Embedded2 struct {
-	Float float64 `recenc:"float"`
-	Bool  bool    `recenc:"bool"`
+	Float float64 `csv:"float"`
+	Bool  bool    `csv:"bool"`
 }
 
 type Embedded3 map[string]string
@@ -29,79 +29,79 @@ type Embedded4 interface{}
 
 type TypeA struct {
 	Embedded1
-	String string `recenc:"string"`
+	String string `csv:"string"`
 	Embedded2
-	Int int `recenc:"int"`
+	Int int `csv:"int"`
 }
 
 type TypeB struct {
-	Embedded3 `recenc:"json"`
-	String    string `recenc:"string"`
+	Embedded3 `csv:"json"`
+	String    string `csv:"string"`
 }
 
 type TypeC struct {
 	*Embedded1
-	String string `recenc:"string"`
+	String string `csv:"string"`
 }
 
 type TypeD struct {
-	*Embedded3 `recenc:"json"`
-	String     string `recenc:"string"`
+	*Embedded3 `csv:"json"`
+	String     string `csv:"string"`
 }
 
 type TypeE struct {
-	String **string `recenc:"string"`
-	Int    *int     `recenc:"int"`
+	String **string `csv:"string"`
+	Int    *int     `csv:"int"`
 }
 
 type TypeF struct {
-	Int      int          `recenc:"int"`
-	Pint     *int         `recenc:"pint"`
-	Int8     int8         `recenc:"int8"`
-	Pint8    *int8        `recenc:"pint8"`
-	Int16    int16        `recenc:"int16"`
-	Pint16   *int16       `recenc:"pint16"`
-	Int32    int32        `recenc:"int32"`
-	Pint32   *int32       `recenc:"pint32"`
-	Int64    int64        `recenc:"int64"`
-	Pint64   *int64       `recenc:"pint64"`
-	UInt     uint         `recenc:"uint"`
-	Puint    *uint        `recenc:"puint"`
-	Uint8    uint8        `recenc:"uint8"`
-	Puint8   *uint8       `recenc:"puint8"`
-	Uint16   uint16       `recenc:"uint16"`
-	Puint16  *uint16      `recenc:"puint16"`
-	Uint32   uint32       `recenc:"uint32"`
-	Puint32  *uint32      `recenc:"puint32"`
-	Uint64   uint64       `recenc:"uint64"`
-	Puint64  *uint64      `recenc:"puint64"`
-	Float32  float32      `recenc:"float32"`
-	Pfloat32 *float32     `recenc:"pfloat32"`
-	Float64  float64      `recenc:"float64"`
-	Pfloat64 *float64     `recenc:"pfloat64"`
-	String   string       `recenc:"string"`
-	PString  *string      `recenc:"pstring"`
-	Bool     bool         `recenc:"bool"`
-	Pbool    *bool        `recenc:"pbool"`
-	V        interface{}  `recenc:"interface"`
-	Pv       *interface{} `recenc:"pinterface"`
+	Int      int          `csv:"int"`
+	Pint     *int         `csv:"pint"`
+	Int8     int8         `csv:"int8"`
+	Pint8    *int8        `csv:"pint8"`
+	Int16    int16        `csv:"int16"`
+	Pint16   *int16       `csv:"pint16"`
+	Int32    int32        `csv:"int32"`
+	Pint32   *int32       `csv:"pint32"`
+	Int64    int64        `csv:"int64"`
+	Pint64   *int64       `csv:"pint64"`
+	UInt     uint         `csv:"uint"`
+	Puint    *uint        `csv:"puint"`
+	Uint8    uint8        `csv:"uint8"`
+	Puint8   *uint8       `csv:"puint8"`
+	Uint16   uint16       `csv:"uint16"`
+	Puint16  *uint16      `csv:"puint16"`
+	Uint32   uint32       `csv:"uint32"`
+	Puint32  *uint32      `csv:"puint32"`
+	Uint64   uint64       `csv:"uint64"`
+	Puint64  *uint64      `csv:"puint64"`
+	Float32  float32      `csv:"float32"`
+	Pfloat32 *float32     `csv:"pfloat32"`
+	Float64  float64      `csv:"float64"`
+	Pfloat64 *float64     `csv:"pfloat64"`
+	String   string       `csv:"string"`
+	PString  *string      `csv:"pstring"`
+	Bool     bool         `csv:"bool"`
+	Pbool    *bool        `csv:"pbool"`
+	V        interface{}  `csv:"interface"`
+	Pv       *interface{} `csv:"pinterface"`
 }
 
 type TypeG struct {
 	String      string
 	Int         int
-	Float       float64 `recenc:"-"`
+	Float       float64 `csv:"-"`
 	unexported1 int
-	unexported2 int `recenc:"unexported2"`
+	unexported2 int `csv:"unexported2"`
 }
 
 type TypeI struct {
-	String string `recenc:",omitempty"`
-	Int    int    `recenc:"int,omitempty"`
+	String string `csv:",omitempty"`
+	Int    int    `csv:"int,omitempty"`
 }
 
 type TypeWithInvalidField struct {
-	String TypeI `recenc:"string"`
+	String TypeI `csv:"string"`
 }
 
 var Int = 10
@@ -377,10 +377,10 @@ string,"{""key"":""value""}"
 			v        interface{}
 			expected string
 		}{
-			{nil, "recenc: Decode(nil)"},
-			{struct{}{}, "recenc: Decode(non-pointer struct {})"},
-			{(*int)(nil), "recenc: Decode(non-struct pointer)"},
-			{(*TypeA)(nil), "recenc: Decode(nil *recenc.TypeA)"},
+			{nil, "csvutil: Decode(nil)"},
+			{struct{}{}, "csvutil: Decode(non-pointer struct {})"},
+			{(*int)(nil), "csvutil: Decode(non-struct pointer)"},
+			{(*TypeA)(nil), "csvutil: Decode(nil *csvutil.TypeA)"},
 		}
 
 		for _, f := range fixtures {
@@ -402,16 +402,16 @@ string,"{""key"":""value""}"
 
 func BenchmarkDecode(b *testing.B) {
 	type A struct {
-		A int     `recenc:"a"`
-		B float64 `recenc:"b"`
-		C string  `recenc:"c"`
-		D int64   `recenc:"d"`
-		E int8    `recenc:"e"`
-		F float32 `recenc:"f"`
-		G float32 `recenc:"g"`
-		H float32 `recenc:"h"`
-		I string  `recenc:"i"`
-		J int     `recenc:"j"`
+		A int     `csv:"a"`
+		B float64 `csv:"b"`
+		C string  `csv:"c"`
+		D int64   `csv:"d"`
+		E int8    `csv:"e"`
+		F float32 `csv:"f"`
+		G float32 `csv:"g"`
+		H float32 `csv:"h"`
+		I string  `csv:"i"`
+		J int     `csv:"j"`
 	}
 
 	header := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}

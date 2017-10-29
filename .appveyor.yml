@@ -1,6 +1,6 @@
 version: "{build}"
 
-clone_folder: c:\projects\src\github.com\jszwec\recenc
+clone_folder: c:\projects\src\github.com\jszwec\csvutil
 
 environment:
  PATH: c:\projects\bin;%PATH%

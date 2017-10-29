@@ -1,4 +1,4 @@
-package recenc
+package csvutil
 
 import (
 	"fmt"
@@ -65,30 +65,30 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 //
 // Examples of struct field tags and their meanings:
 // 	// Decode matches this field with "myName" header column.
-// 	Field int `recenc:"myName"`
+// 	Field int `csv:"myName"`
 //
 // 	// Decode matches this field with "Field" header column.
 // 	Field int
 //
 // 	// Decode matches this field with "myName" header column and decoding is not
 //	// called if record's field is an empty string.
-// 	Field int `recenc:"myName,omitempty"`
+// 	Field int `csv:"myName,omitempty"`
 //
 // 	// Decode matches this field with "Field" header column and decoding is not
 //	// called if record's field is an empty string.
-// 	Field int `recenc:",omitempty"`
+// 	Field int `csv:",omitempty"`
 //
 // 	// Decode ignores this field.
-// 	Field int `recenc:"-"`
+// 	Field int `csv:"-"`
 //
-// By default decode looks for "recenc" tag, but this can be changed by setting
+// By default decode looks for "csv" tag, but this can be changed by setting
 // Decoder.Tag field.
 //
-// To Decode into a custom type v must implement recenc.Marshaler or
-// encoding.TextMarshaler.
+// To Decode into a custom type v must implement csvutil.Unmarshaler or
+// encoding.TextUnarshaler.
 //
 // Anonymous struct fields with tags are treated like normal fields and they
-// must implement recenc.Marshaler or encoding.TextMarshaler.
+// must implement csvutil.Unmarshaler or encoding.TextUnmarshaler.
 //
 // Anonymous struct fields without tags are populated just as if they were
 // part of the main struct. However fields in the main struct have bigger
@@ -249,7 +249,7 @@ func (d *Decoder) scanStruct(v reflect.Value, typ reflect.Type, hmap map[string]
 
 func (d *Decoder) tag() string {
 	if d.Tag == "" {
-		return "recenc"
+		return "csv"
 	}
 	return d.Tag
 }

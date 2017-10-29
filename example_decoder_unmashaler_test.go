@@ -1,4 +1,4 @@
-package recenc_test
+package csvutil_test
 
 import (
 	"encoding/csv"
@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jszwec/recenc"
+	"github.com/jszwec/csvutil"
 )
 
 type Bar int
@@ -20,13 +20,13 @@ func (b *Bar) UnmarshalCSV(s string) error {
 }
 
 type Foo struct {
-	Bar Bar `recenc:"bar"`
+	Bar Bar `csv:"bar"`
 }
 
 func ExampleDecoder_unmarshaler() {
 	csvReader := csv.NewReader(strings.NewReader("10\n5"))
 
-	dec, err := recenc.NewDecoder(csvReader, "bar")
+	dec, err := csvutil.NewDecoder(csvReader, "bar")
 	if err != nil {
 		log.Fatal(err)
 	}

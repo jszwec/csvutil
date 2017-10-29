@@ -1,4 +1,4 @@
-package recenc_test
+package csvutil_test
 
 import (
 	"encoding/csv"
@@ -7,15 +7,15 @@ import (
 	"log"
 	"strings"
 
-	"github.com/jszwec/recenc"
+	"github.com/jszwec/csvutil"
 )
 
 func ExampleDecoder_decodeCSV() {
 	type User struct {
-		ID   *int   `recenc:"id,omitempty"`
-		Name string `recenc:"name"`
-		City string `recenc:"city"`
-		Age  int    `recenc:"age"`
+		ID   *int   `csv:"id,omitempty"`
+		Name string `csv:"name"`
+		City string `csv:"city"`
+		Age  int    `csv:"age"`
 	}
 
 	csvReader := csv.NewReader(strings.NewReader(
@@ -23,7 +23,7 @@ func ExampleDecoder_decodeCSV() {
 			",alice,25,la\n" +
 			",bob,30,ny\n"))
 
-	dec, err := recenc.NewDecoder(csvReader)
+	dec, err := csvutil.NewDecoder(csvReader)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,10 +47,10 @@ func ExampleDecoder_decodeCSV() {
 
 func ExampleDecoder_decodeUnusedColumns() {
 	type User struct {
-		Name      string            `recenc:"name"`
-		City      string            `recenc:"city"`
-		Age       int               `recenc:"age"`
-		OtherData map[string]string `recenc:"-"`
+		Name      string            `csv:"name"`
+		City      string            `csv:"city"`
+		Age       int               `csv:"age"`
+		OtherData map[string]string `csv:"-"`
 	}
 
 	csvReader := csv.NewReader(strings.NewReader(
@@ -58,7 +58,7 @@ func ExampleDecoder_decodeUnusedColumns() {
 			"alice,25,la,1234\n" +
 			"bob,30,ny,5678"))
 
-	dec, err := recenc.NewDecoder(csvReader)
+	dec, err := csvutil.NewDecoder(csvReader)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,16 +89,16 @@ func ExampleDecoder_decodeUnusedColumns() {
 
 func ExampleDecoder_decodeEmbedded() {
 	type Address struct {
-		ID    int    `recenc:"id"` // same field as in User - this one will be empty
-		City  string `recenc:"city"`
-		State string `recenc:"state"`
+		ID    int    `csv:"id"` // same field as in User - this one will be empty
+		City  string `csv:"city"`
+		State string `csv:"state"`
 	}
 
 	type User struct {
 		Address
-		ID   int    `recenc:"id"` // same field as in Address - this one wins
-		Name string `recenc:"name"`
-		Age  int    `recenc:"age"`
+		ID   int    `csv:"id"` // same field as in Address - this one wins
+		Name string `csv:"name"`
+		Age  int    `csv:"age"`
 	}
 
 	csvReader := csv.NewReader(strings.NewReader(
@@ -106,7 +106,7 @@ func ExampleDecoder_decodeEmbedded() {
 			"1,alice,25,la,ca\n" +
 			"2,bob,30,ny,ny"))
 
-	dec, err := recenc.NewDecoder(csvReader)
+	dec, err := csvutil.NewDecoder(csvReader)
 	if err != nil {
 		log.Fatal(err)
 	}
