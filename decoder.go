@@ -85,7 +85,7 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // Decoder.Tag field.
 //
 // To Decode into a custom type v must implement csvutil.Unmarshaler or
-// encoding.TextUnarshaler.
+// encoding.TextUnmarshaler.
 //
 // Anonymous struct fields with tags are treated like normal fields and they
 // must implement csvutil.Unmarshaler or encoding.TextUnmarshaler.
@@ -134,14 +134,14 @@ func (d *Decoder) Unused() (indexes []int) {
 func (d *Decoder) unmarshal(record []string, v interface{}) error {
 	vv := reflect.ValueOf(v)
 	if vv.Kind() != reflect.Ptr || vv.IsNil() {
-		return &InvalidUnmarshalError{Type: reflect.TypeOf(v)}
+		return &InvalidDecodeError{Type: reflect.TypeOf(v)}
 	}
 
 	elem := indirect(vv.Elem())
 	typ := elem.Type()
 
 	if typ.Kind() != reflect.Struct {
-		return &InvalidUnmarshalError{Type: reflect.PtrTo(typ)}
+		return &InvalidDecodeError{Type: reflect.PtrTo(typ)}
 	}
 
 	for i := range d.used {

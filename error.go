@@ -30,13 +30,13 @@ func (e *UnsupportedTypeError) Error() string {
 	return "csvutil: unsupported type: " + e.Type.String()
 }
 
-// An InvalidUnmarshalError describes an invalid argument passed to Decode.
+// An InvalidDecodeError describes an invalid argument passed to Decode.
 // (The argument to Decode must be a non-nil pointer.)
-type InvalidUnmarshalError struct {
+type InvalidDecodeError struct {
 	Type reflect.Type
 }
 
-func (e *InvalidUnmarshalError) Error() string {
+func (e *InvalidDecodeError) Error() string {
 	if e.Type == nil {
 		return "csvutil: Decode(nil)"
 	}
@@ -50,4 +50,20 @@ func (e *InvalidUnmarshalError) Error() string {
 	}
 
 	return "csvutil: Decode(nil " + e.Type.String() + ")"
+}
+
+type InvalidUnmarshalError struct {
+	Type reflect.Type
+}
+
+func (e *InvalidUnmarshalError) Error() string {
+	if e.Type == nil {
+		return "csvutil: Unmarshal(nil)"
+	}
+
+	if e.Type.Kind() != reflect.Ptr {
+		return "csvutil: Unmarshal(non-pointer " + e.Type.String() + ")"
+	}
+
+	return "csvutil: Unmarshal(non-slice pointer)"
 }
