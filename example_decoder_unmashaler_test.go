@@ -13,7 +13,7 @@ import (
 
 type Bar int
 
-func (b *Bar) UnmarshalField(s string) error {
+func (b *Bar) UnmarshalCSV(s string) error {
 	n, err := strconv.Atoi(s)
 	*b = Bar(n)
 	return err

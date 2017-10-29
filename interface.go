@@ -4,7 +4,7 @@ package recenc
 //
 // If there is no data left to be read, Read returns nil, io.EOF.
 //
-// It is compatible with csv.Reader.
+// It is implemented by csv.Reader.
 type Reader interface {
 	Read() ([]string, error)
 }
@@ -12,5 +12,5 @@ type Reader interface {
 // Unmarshaler is the interface implemented by types that can unmarshal
 // a single record's field description of themselves.
 type Unmarshaler interface {
-	UnmarshalField(string) error
+	UnmarshalCSV(string) error
 }

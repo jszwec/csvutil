@@ -80,7 +80,7 @@ func decodeFieldUnmarshaler(s string, v reflect.Value) error {
 	if v.IsNil() {
 		v.Set(reflect.New(v.Type().Elem()))
 	}
-	return v.Interface().(Unmarshaler).UnmarshalField(s)
+	return v.Interface().(Unmarshaler).UnmarshalCSV(s)
 }
 
 func decodePtr(s string, v reflect.Value) error {

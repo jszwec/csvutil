@@ -21,7 +21,7 @@ type Embedded2 struct {
 
 type Embedded3 map[string]string
 
-func (e *Embedded3) UnmarshalField(s string) error {
+func (e *Embedded3) UnmarshalCSV(s string) error {
 	return json.Unmarshal([]byte(s), e)
 }
 
