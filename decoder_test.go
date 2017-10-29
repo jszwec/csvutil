@@ -100,6 +100,47 @@ type TypeI struct {
 	Int    int    `csv:"int,omitempty"`
 }
 
+type Unmarshalers struct {
+	CSVUnmarshaler      CSVUnmarshaler      `csv:"csv"`
+	PCSVUnmarshaler     *CSVUnmarshaler     `csv:"pcsv"`
+	TextUnmarshaler     TextUnmarshaler     `csv:"text"`
+	PTextUnmarshaler    *TextUnmarshaler    `csv:"ptext"`
+	CSVTextUnmarshaler  CSVTextUnmarshaler  `csv:"csv-text"`
+	PCSVTextUnmarshaler *CSVTextUnmarshaler `csv:"pcsv-text"`
+}
+
+type CSVUnmarshaler struct {
+	String string `csv:"string"`
+}
+
+func (t *CSVUnmarshaler) UnmarshalCSV(s string) error {
+	t.String = "unmarshalCSV:" + s
+	return nil
+}
+
+type TextUnmarshaler struct {
+	String string `csv:"string"`
+}
+
+func (t *TextUnmarshaler) UnmarshalText(text []byte) error {
+	t.String = "unmarshalText:" + string(text)
+	return nil
+}
+
+type CSVTextUnmarshaler struct {
+	String string `csv:"string"`
+}
+
+func (t *CSVTextUnmarshaler) UnmarshalCSV(s string) error {
+	t.String = "unmarshalCSV:" + s
+	return nil
+}
+
+func (t *CSVTextUnmarshaler) UnmarshalText(text []byte) error {
+	t.String = "unmarshalText:" + string(text)
+	return nil
+}
+
 type TypeWithInvalidField struct {
 	String TypeI `csv:"string"`
 }
@@ -289,6 +330,21 @@ string,"{""key"":""value""}"
 			expected:       &TypeI{},
 			expectedRecord: []string{"", ""},
 			header:         []string{"String", "int"},
+		},
+		{
+			desc: "decode unmarshalers",
+			in:   "csv,pcsv,text,ptext,csv-text,pcsv-text\nfield,field,field,field,field,field",
+			out:  &Unmarshalers{},
+			expected: &Unmarshalers{
+				CSVUnmarshaler:      CSVUnmarshaler{"unmarshalCSV:field"},
+				PCSVUnmarshaler:     &CSVUnmarshaler{"unmarshalCSV:field"},
+				TextUnmarshaler:     TextUnmarshaler{"unmarshalText:field"},
+				PTextUnmarshaler:    &TextUnmarshaler{"unmarshalText:field"},
+				CSVTextUnmarshaler:  CSVTextUnmarshaler{"unmarshalCSV:field"},
+				PCSVTextUnmarshaler: &CSVTextUnmarshaler{"unmarshalCSV:field"},
+			},
+			expectedRecord: []string{"field", "field", "field", "field", "field", "field"},
+			header:         []string{"csv", "pcsv", "text", "ptext", "csv-text", "pcsv-text"},
 		},
 		{
 			desc: "custom header",

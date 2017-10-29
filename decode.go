@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	textUnmarshaler  = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
-	fieldUnmarshaler = reflect.TypeOf(new(Unmarshaler)).Elem()
+	textUnmarshaler = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
+	csvUnmarshaler  = reflect.TypeOf(new(Unmarshaler)).Elem()
 )
 
 type decodeFunc func(s string, v reflect.Value) error
@@ -108,17 +108,17 @@ func decodeInterface(s string, v reflect.Value) error {
 }
 
 func decodeFn(typ reflect.Type) (decodeFunc, error) {
+	if typ.Implements(csvUnmarshaler) {
+		return decodeFieldUnmarshaler, nil
+	}
+	if reflect.PtrTo(typ).Implements(csvUnmarshaler) {
+		return decodePtrFieldUnmarshaler, nil
+	}
 	if typ.Implements(textUnmarshaler) {
 		return decodeTextUnmarshaler, nil
 	}
 	if reflect.PtrTo(typ).Implements(textUnmarshaler) {
 		return decodePtrTextUnmarshaler, nil
-	}
-	if typ.Implements(fieldUnmarshaler) {
-		return decodeFieldUnmarshaler, nil
-	}
-	if reflect.PtrTo(typ).Implements(fieldUnmarshaler) {
-		return decodePtrFieldUnmarshaler, nil
 	}
 
 	switch typ.Kind() {
