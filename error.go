@@ -52,6 +52,8 @@ func (e *InvalidDecodeError) Error() string {
 	return "csvutil: Decode(nil " + e.Type.String() + ")"
 }
 
+// An InvalidUnmarshalError describes an invalid argument passed to Unmarshal.
+// (The argument to Unmarshal must be a non-nil slice pointer.)
 type InvalidUnmarshalError struct {
 	Type reflect.Type
 }

@@ -32,6 +32,9 @@ type Decoder struct {
 // If header is empty NewDecoder will read one line and treat it as a header.
 //
 // Records coming from r must be of the same length as the header.
+//
+// NewDecoder may return io.EOF if there is no data in r and no header was
+// provided by the caller.
 func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 	if len(header) == 0 {
 		header, err = r.Read()
@@ -91,7 +94,7 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // must implement csvutil.Unmarshaler or encoding.TextUnmarshaler.
 //
 // Anonymous struct fields without tags are populated just as if they were
-// part of the main struct. However fields in the main struct have bigger
+// part of the main struct. However, fields in the main struct have bigger
 // priority and they are populated first. If main struct and anonymous struct
 // field have the same fields, the main struct's fields will be populated.
 func (d *Decoder) Decode(v interface{}) (err error) {

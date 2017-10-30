@@ -1,8 +1,8 @@
 package csvutil
 
-// Reader provides the interface for reading a single record.
+// Reader provides the interface for reading a single CSV record.
 //
-// If there is no data left to be read, Read returns nil, io.EOF.
+// If there is no data left to be read, Read returns (nil, io.EOF).
 //
 // It is implemented by csv.Reader.
 type Reader interface {

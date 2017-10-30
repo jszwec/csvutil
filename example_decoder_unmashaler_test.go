@@ -1,12 +1,8 @@
 package csvutil_test
 
 import (
-	"encoding/csv"
 	"fmt"
-	"io"
-	"log"
 	"strconv"
-	"strings"
 
 	"github.com/jszwec/csvutil"
 )
@@ -20,30 +16,22 @@ func (b *Bar) UnmarshalCSV(s string) error {
 }
 
 type Foo struct {
+	Int int `csv:"int"`
 	Bar Bar `csv:"bar"`
 }
 
-func ExampleDecoder_unmarshaler() {
-	csvReader := csv.NewReader(strings.NewReader("10\n5"))
-
-	dec, err := csvutil.NewDecoder(csvReader, "bar")
-	if err != nil {
-		log.Fatal(err)
-	}
+func ExampleDecoder_customUnmarshalCSV() {
+	var csvInput = []byte(`int,bar
+5,10
+6,11`)
 
 	var foos []Foo
-	for {
-		var f Foo
-		if err := dec.Decode(&f); err == io.EOF {
-			break
-		} else if err != nil {
-			log.Fatal(err)
-		}
-		foos = append(foos, f)
+	if err := csvutil.Unmarshal(csvInput, &foos); err != nil {
+		fmt.Println("error:", err)
 	}
 
-	fmt.Println(foos)
+	fmt.Printf("%+v", foos)
 
 	// Output:
-	// [{10} {5}]
+	// [{Int:5 Bar:10} {Int:6 Bar:11}]
 }

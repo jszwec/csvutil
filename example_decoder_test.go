@@ -10,7 +10,7 @@ import (
 	"github.com/jszwec/csvutil"
 )
 
-func ExampleDecoder_decodeCSV() {
+func ExampleDecoder_decode() {
 	type User struct {
 		ID   *int   `csv:"id,omitempty"`
 		Name string `csv:"name"`
