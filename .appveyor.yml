@@ -5,7 +5,7 @@ clone_folder: c:\projects\src\github.com\jszwec\csvutil
 environment:
  PATH: c:\projects\bin;%PATH%
  GOPATH: c:\projects
- GOVERSION: 1.8.3
+ GOVERSION: 1.9.2
 
 install:
  - rmdir c:\go /s /q
