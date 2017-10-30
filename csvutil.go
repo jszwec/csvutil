@@ -32,7 +32,7 @@ func Unmarshal(data []byte, v interface{}) error {
 	}
 
 	typ := vv.Type().Elem()
-	slice := reflect.MakeSlice(typ, 0, 2)
+	slice := reflect.MakeSlice(typ, 0, bytes.Count(data, []byte("\n")))
 
 	dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
 	if err == io.EOF {
