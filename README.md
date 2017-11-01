@@ -12,6 +12,7 @@ Performance
 ------------
 
 csvutil provides the best decoding performance with small memory usage.
+
 benchmark code: https://gist.github.com/jszwec/e8515e741190454fa3494bcd3e1f100f
 
 csvutil:
