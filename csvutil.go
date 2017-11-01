@@ -31,7 +31,9 @@ func Unmarshal(data []byte, v interface{}) error {
 	}
 
 	typ := vv.Type().Elem()
-	slice := reflect.MakeSlice(typ, 0, bytes.Count(data, []byte("\n")))
+
+	c := countRecords(data)
+	slice := reflect.MakeSlice(typ, c, c)
 
 	dec, err := NewDecoder(newCSVReader(bytes.NewReader(data)))
 	if err == io.EOF {
@@ -40,16 +42,47 @@ func Unmarshal(data []byte, v interface{}) error {
 		return err
 	}
 
-	for {
-		elem := reflect.New(typ.Elem())
-		if err := dec.Decode(elem.Interface()); err == io.EOF {
+	var i int
+	for ; ; i++ {
+		// just in case countRecords counts it wrong.
+		if i >= c && i >= slice.Len() {
+			slice = reflect.Append(slice, reflect.New(typ.Elem()).Elem())
+		}
+
+		if err := dec.Decode(slice.Index(i).Addr().Interface()); err == io.EOF {
 			break
 		} else if err != nil {
 			return err
 		}
-		slice = reflect.Append(slice, elem.Elem())
 	}
 
-	vv.Elem().Set(slice)
+	vv.Elem().Set(slice.Slice3(0, i, i))
 	return nil
+}
+
+func countRecords(s []byte) (n int) {
+	var prev byte
+	inQuote := false
+	for {
+		if len(s) == 0 && prev != '"' {
+			return n
+		}
+
+		i := bytes.IndexAny(s, "\n\"")
+		if i == -1 {
+			return n + 1
+		}
+
+		switch s[i] {
+		case '\n':
+			if !inQuote && (i > 0 || prev == '"') {
+				n++
+			}
+		case '"':
+			inQuote = !inQuote
+		}
+
+		prev = s[i]
+		s = s[i+1:]
+	}
 }

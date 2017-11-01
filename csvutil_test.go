@@ -1,6 +1,7 @@
 package csvutil
 
 import (
+	"encoding/csv"
 	"reflect"
 	"testing"
 )
@@ -31,6 +32,24 @@ func TestUnmarshal(t *testing.T) {
 			},
 		},
 		{
+			desc: "quoted input",
+			src:  []byte("\n\n\n\"String\",\"int\"\n\"string1,\n\",\"1\"\n\n\n\n\"string2\",\"2\""),
+			in:   &[]TypeI{},
+			out: &[]TypeI{
+				{"string1,\n", 1},
+				{"string2", 2},
+			},
+		},
+		{
+			desc: "quoted input - with endline",
+			src:  []byte("\n\n\n\"String\",\"int\"\n\"string1,\n\",\"1\"\n\"string2\",\"2\"\n\n\n"),
+			in:   &[]TypeI{},
+			out: &[]TypeI{
+				{"string1,\n", 1},
+				{"string2", 2},
+			},
+		},
+		{
 			desc: "header only",
 			src:  []byte("String,int\n"),
 			in:   &[]TypeI{},
@@ -53,10 +72,48 @@ func TestUnmarshal(t *testing.T) {
 			if !reflect.DeepEqual(f.in, f.out) {
 				t.Errorf("want out=%v; got %v", f.out, f.in)
 			}
+
+			out := reflect.ValueOf(f.out).Elem()
+			in := reflect.ValueOf(f.in).Elem()
+			if cout, cin := out.Cap(), in.Cap(); cout != cin {
+				t.Errorf("want cap=%d; got %d", cout, cin)
+			}
 		})
 	}
 
+	t.Run("invalid data", func(t *testing.T) {
+		type A struct{}
+
+		fixtures := []struct {
+			desc string
+			data []byte
+			err  error
+		}{
+			{
+				desc: "invalid first line",
+				data: []byte(`"`),
+				err:  &csv.ParseError{Line: 1, Column: 1, Err: csv.ErrQuote},
+			},
+			{
+				desc: "invalid second line",
+				data: []byte("line\n\""),
+				err:  &csv.ParseError{Line: 2, Column: 1, Err: csv.ErrQuote},
+			},
+		}
+
+		for _, f := range fixtures {
+			t.Run(f.desc, func(t *testing.T) {
+				var a []A
+				if err := Unmarshal(f.data, &a); !reflect.DeepEqual(err, f.err) {
+					t.Errorf("want err=%v; got %v", f.err, err)
+				}
+			})
+		}
+	})
+
 	t.Run("test invalid arguments", func(t *testing.T) {
+		n := 1
+
 		var fixtures = []struct {
 			desc     string
 			v        interface{}
@@ -66,6 +123,7 @@ func TestUnmarshal(t *testing.T) {
 			{"nil", nil, "csvutil: Unmarshal(nil)"},
 			{"non pointer struct", struct{}{}, "csvutil: Unmarshal(non-pointer struct {})"},
 			{"non-slice pointer", (*int)(nil), "csvutil: Unmarshal(non-slice pointer)"},
+			{"non-nil non-slice pointer", &n, "csvutil: Unmarshal(non-slice pointer)"},
 		}
 
 		for _, f := range fixtures {
@@ -80,4 +138,72 @@ func TestUnmarshal(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestCountLines(t *testing.T) {
+	fixtures := []struct {
+		desc string
+		data []byte
+		out  int
+	}{
+		{
+			desc: "three lines no endline",
+			data: []byte(`line1,line1
+line2,line2,
+line3,line3`),
+			out: 3,
+		},
+		{
+			desc: "three lines",
+			data: []byte(`line1,line1
+line2,line2
+line3,line3
+`),
+			out: 3,
+		},
+		{
+			desc: "no data",
+			data: []byte(``),
+			out:  0,
+		},
+		{
+			desc: "endline in a quoted string",
+			data: []byte(`"line
+""1""",line1
+line2,"line   
+  2"""
+`),
+			out: 2,
+		},
+		{
+			desc: "empty lines",
+			data: []byte("\n\nline1,line1\n\n\n\nline2,line2\n\n"),
+			out:  2,
+		},
+		{
+			desc: "1 line ending with quote",
+			data: []byte(`"line1","line2"`),
+			out:  1,
+		},
+		{
+			desc: "1 line ending with quote - with endline",
+			data: []byte(`"line1","line2"
+`),
+			out: 1,
+		},
+		{
+			desc: "2 lines ending with quote",
+			data: []byte(`"line1","line2"
+line2,"line2"`),
+			out: 2,
+		},
+	}
+
+	for _, f := range fixtures {
+		t.Run(f.desc, func(t *testing.T) {
+			if out := countRecords(f.data); out != f.out {
+				t.Errorf("want=%d; got %d", f.out, out)
+			}
+		})
+	}
 }

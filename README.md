@@ -17,12 +17,12 @@ benchmark code: https://gist.github.com/jszwec/e8515e741190454fa3494bcd3e1f100f
 
 csvutil:
 ```
-BenchmarkUnmarshal/csvutil.Unmarshal/1_record-8         	  200000	     10073 ns/op	    7568 B/op	      46 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/10_records-8       	   50000	     24264 ns/op	    9601 B/op	      73 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/100_records-8      	   10000	    163714 ns/op	   29857 B/op	     343 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/1000_records-8     	    1000	   1541715 ns/op	  233232 B/op	    3043 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/10000_records-8    	     100	  15955442 ns/op	 2260436 B/op	   30043 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/100000_records-8   	      10	 159592311 ns/op	23248254 B/op	  300044 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/1_record-8         	  200000	      9407 ns/op	    7408 B/op	      44 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/10_records-8       	  100000	     21384 ns/op	    8433 B/op	      53 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/100_records-8      	   10000	    140172 ns/op	   18609 B/op	     143 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/1000_records-8     	    1000	   1334816 ns/op	  121183 B/op	    1043 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/10000_records-8    	     100	  13203689 ns/op	 1140356 B/op	   10043 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/100000_records-8   	      10	 137474932 ns/op	12048059 B/op	  100044 allocs/op
 ```
 
 gocsv:
