@@ -48,7 +48,7 @@ BenchmarkUnmarshal/easycsv.ReadAll/100000_records-8     	       2	 737079728 ns/
 Example
 --------
 
-```
+```go
 	var csvInput = []byte(`name,age
 jacek,26
 john,27`)
