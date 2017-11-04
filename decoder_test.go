@@ -1,6 +1,7 @@
 package csvutil
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"io"
@@ -143,6 +144,10 @@ func (t *CSVTextUnmarshaler) UnmarshalText(text []byte) error {
 
 type TypeWithInvalidField struct {
 	String TypeI `csv:"string"`
+}
+
+type InvalidType struct {
+	String struct{}
 }
 
 var Int = 10
@@ -366,6 +371,66 @@ string,"{""key"":""value""}"
 				Type: reflect.TypeOf(TypeI{}),
 			},
 		},
+		{
+			desc: "invalid int",
+			in:   "Int,Foo\n,",
+			out:  &struct{ Int int }{},
+			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(int(0))},
+		},
+		{
+			desc: "invalid int pointer",
+			in:   "Int,Foo\n,",
+			out:  &struct{ Int *int }{},
+			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(int(0))},
+		},
+		{
+			desc: "invalid type pointer",
+			in:   "Int,Foo\n,",
+			out:  &struct{ Int *struct{} }{},
+			err:  &UnsupportedTypeError{Type: reflect.TypeOf(struct{}{})},
+		},
+		{
+			desc: "invalid uint",
+			in:   "Uint,Foo\n,",
+			out:  &struct{ Uint uint }{},
+			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(uint(0))},
+		},
+		{
+			desc: "invalid float",
+			in:   "Float,Foo\n,",
+			out:  &struct{ Float float64 }{},
+			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(float64(0))},
+		},
+		{
+			desc: "invalid bool",
+			in:   "Bool,Foo\n,",
+			out:  &struct{ Bool bool }{},
+			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(bool(false))},
+		},
+		{
+			desc: "invalid interface",
+			in:   "Interface,Foo\n,",
+			out:  &struct{ Interface Unmarshaler }{},
+			err:  &UnmarshalTypeError{Value: "", Type: csvUnmarshaler},
+		},
+		{
+			desc: "invalid interface pointer",
+			in:   "Interface,Foo\n,",
+			out:  &struct{ Interface *Unmarshaler }{},
+			err:  &UnmarshalTypeError{Value: "", Type: csvUnmarshaler},
+		},
+		{
+			desc: "invalid field in embedded type",
+			in:   "String,int\n1,1",
+			out:  &struct{ InvalidType }{},
+			err:  &UnsupportedTypeError{Type: reflect.TypeOf(struct{}{})},
+		},
+		{
+			desc: "not a struct in decode",
+			in:   "string,int\n1,1",
+			out:  &Int,
+			err:  &InvalidDecodeError{Type: reflect.TypeOf(&Int)},
+		},
 	}
 
 	for _, f := range fixtures {
@@ -452,6 +517,23 @@ string,"{""key"":""value""}"
 			if got := err.Error(); got != f.expected {
 				t.Errorf("want Decode=%q; got %q", got, f.expected)
 			}
+		}
+	})
+
+	t.Run("header and field length mismatch", func(t *testing.T) {
+		type Foo struct {
+			Col1 string `csv:"col1"`
+			Col2 string `csv:"col2"`
+		}
+		data := []byte("1,1,1")
+		r, err := NewDecoder(csv.NewReader(bytes.NewReader(data)), "col1", "col2")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var foo Foo
+		if err := r.Decode(&foo); err != ErrFieldCount {
+			t.Errorf("want err=%v; got %v", ErrFieldCount, err)
 		}
 	})
 }

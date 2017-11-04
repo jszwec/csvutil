@@ -2,7 +2,6 @@ package csvutil
 
 import (
 	"encoding"
-	"errors"
 	"reflect"
 	"strconv"
 )
@@ -56,30 +55,18 @@ func decodeBool(s string, v reflect.Value) error {
 }
 
 func decodePtrTextUnmarshaler(s string, v reflect.Value) error {
-	if v.CanAddr() {
-		return decodeTextUnmarshaler(s, v.Addr())
-	}
-	return errors.New("cannot take pointer")
+	return decodeTextUnmarshaler(s, v.Addr())
 }
 
 func decodeTextUnmarshaler(s string, v reflect.Value) error {
-	if v.IsNil() {
-		v.Set(reflect.New(v.Type().Elem()))
-	}
 	return v.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(s))
 }
 
 func decodePtrFieldUnmarshaler(s string, v reflect.Value) error {
-	if v.CanAddr() {
-		return decodeFieldUnmarshaler(s, v.Addr())
-	}
-	return errors.New("cannot take pointer")
+	return decodeFieldUnmarshaler(s, v.Addr())
 }
 
 func decodeFieldUnmarshaler(s string, v reflect.Value) error {
-	if v.IsNil() {
-		v.Set(reflect.New(v.Type().Elem()))
-	}
 	return v.Interface().(Unmarshaler).UnmarshalCSV(s)
 }
 
@@ -108,19 +95,6 @@ func decodeInterface(s string, v reflect.Value) error {
 }
 
 func decodeFn(typ reflect.Type) (decodeFunc, error) {
-	if typ.Implements(csvUnmarshaler) {
-		return decodeFieldUnmarshaler, nil
-	}
-	if reflect.PtrTo(typ).Implements(csvUnmarshaler) {
-		return decodePtrFieldUnmarshaler, nil
-	}
-	if typ.Implements(textUnmarshaler) {
-		return decodeTextUnmarshaler, nil
-	}
-	if reflect.PtrTo(typ).Implements(textUnmarshaler) {
-		return decodePtrTextUnmarshaler, nil
-	}
-
 	switch typ.Kind() {
 	case reflect.Ptr:
 		return decodePtr, nil
@@ -136,6 +110,13 @@ func decodeFn(typ reflect.Type) (decodeFunc, error) {
 		return decodeFloat, nil
 	case reflect.Bool:
 		return decodeBool, nil
+	}
+
+	if reflect.PtrTo(typ).Implements(csvUnmarshaler) {
+		return decodePtrFieldUnmarshaler, nil
+	}
+	if reflect.PtrTo(typ).Implements(textUnmarshaler) {
+		return decodePtrTextUnmarshaler, nil
 	}
 
 	return nil, &UnsupportedTypeError{Type: typ}

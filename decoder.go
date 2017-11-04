@@ -1,7 +1,6 @@
 package csvutil
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -194,7 +193,7 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value, typ reflect.
 
 func (d *Decoder) scanStruct(v reflect.Value, typ reflect.Type, hmap map[string]int) error {
 	if typ.Kind() != reflect.Struct {
-		return fmt.Errorf("unsupported type %v", typ)
+		return &InvalidDecodeError{Type: typ}
 	}
 
 	var anonymous []typeCache
