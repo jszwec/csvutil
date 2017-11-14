@@ -4,11 +4,9 @@ import (
 	"reflect"
 )
 
-type typeCache struct {
-	fieldIndex  int
+type decField struct {
 	columnIndex int
-	embedded    bool
-	tag         tag
+	field
 	decodeFunc
 }
 
@@ -19,8 +17,8 @@ type Decoder struct {
 	r      Reader
 	header []string
 	record []string
+	cache  map[typeKey][]decField
 	hmap   map[string]int
-	cache  map[reflect.Type][]typeCache
 	used   []bool
 }
 
@@ -51,7 +49,7 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 		r:      r,
 		header: header,
 		hmap:   m,
-		cache:  make(map[reflect.Type][]typeCache),
+		cache:  make(map[typeKey][]decField),
 		used:   make([]bool, len(header)),
 	}, nil
 }
@@ -117,7 +115,7 @@ func (d *Decoder) Record() []string {
 
 // Header returns the first line that came from the reader.
 func (d *Decoder) Header() []string {
-	header := make([]string, len(d.hmap))
+	header := make([]string, len(d.header))
 	copy(header, d.header)
 	return header
 }
@@ -153,99 +151,56 @@ func (d *Decoder) unmarshal(record []string, v interface{}) error {
 	return d.unmarshalStruct(record, elem, typ, d.used)
 }
 
-func (d *Decoder) unmarshalStruct(record []string, v reflect.Value, typ reflect.Type, used []bool) error {
-	if _, ok := d.cache[typ]; !ok {
-		hmap := make(map[string]int, len(d.hmap))
-		for k, v := range d.hmap {
-			hmap[k] = v
-		}
-		if err := d.scanStruct(v, typ, hmap); err != nil {
-			return err
-		}
-	}
+func (d *Decoder) unmarshalStruct(record []string, v reflect.Value, t reflect.Type, used []bool) error {
+	k := typeKey{d.tag(), t}
 
-	for _, c := range d.cache[typ] {
-		s := record[c.columnIndex]
-		if c.tag.omitEmpty && s == "" {
-			used[c.columnIndex] = true
-			continue
-		}
+	decFields, ok := d.cache[k]
+	if !ok {
+		fields := cachedFields(t, d.tag())
 
-		field := v.Field(c.fieldIndex)
+		decFields = make([]decField, 0, len(fields))
+		for _, f := range fields {
+			i, ok := d.hmap[f.tag.name]
+			if !ok {
+				continue
+			}
 
-		if c.embedded {
-			field = indirect(field)
-			if err := d.unmarshalStruct(record, field, field.Type(), used); err != nil {
+			fn, err := decodeFn(f.typ)
+			if err != nil {
 				return err
 			}
-			continue
-		}
 
-		used[c.columnIndex] = true
-
-		if err := c.decodeFunc(s, field); err != nil {
-			return err
-		}
-
-	}
-	return nil
-}
-
-func (d *Decoder) scanStruct(v reflect.Value, typ reflect.Type, hmap map[string]int) error {
-	if typ.Kind() != reflect.Struct {
-		return &InvalidDecodeError{Type: typ}
-	}
-
-	var anonymous []typeCache
-	numField := v.NumField()
-	cs := make([]typeCache, 0, numField)
-
-	for i := 0; i < numField; i++ {
-		field := v.Field(i)
-		if !field.CanSet() {
-			continue
-		}
-
-		typeField := typ.Field(i)
-		tag := parseTag(d.tag(), typeField)
-		if tag.ignore {
-			continue
-		}
-
-		if typeField.Anonymous && tag.empty {
-			anonymous = append(anonymous, typeCache{
-				fieldIndex: i,
-				embedded:   true,
+			decFields = append(decFields, decField{
+				columnIndex: i,
+				field:       f,
+				decodeFunc:  fn,
 			})
+		}
+
+		d.cache[k] = decFields
+	}
+
+	for _, f := range decFields {
+		used[f.columnIndex] = true
+		if f.tag.omitEmpty && record[f.columnIndex] == "" {
 			continue
 		}
 
-		index, ok := hmap[tag.name]
-		if !ok {
-			continue
+		fv := v
+		for _, i := range f.index {
+			fv = fv.Field(i)
+			if fv.Kind() == reflect.Ptr {
+				if fv.IsNil() {
+					fv.Set(reflect.New(fv.Type().Elem()))
+				}
+				fv = fv.Elem()
+			}
 		}
-		delete(hmap, tag.name)
 
-		decode, err := decodeFn(field.Type())
-		if err != nil {
-			return err
-		}
-
-		cs = append(cs, typeCache{
-			fieldIndex:  i,
-			columnIndex: index,
-			tag:         tag,
-			decodeFunc:  decode,
-		})
-	}
-
-	for _, a := range anonymous {
-		field := indirect(v.Field(a.fieldIndex))
-		if err := d.scanStruct(field, field.Type(), hmap); err != nil {
+		if err := f.decodeFunc(record[f.columnIndex], fv); err != nil {
 			return err
 		}
 	}
-	d.cache[typ] = append(cs, anonymous...)
 	return nil
 }
 

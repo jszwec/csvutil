@@ -28,6 +28,45 @@ func (e *Embedded3) UnmarshalCSV(s string) error {
 
 type Embedded4 interface{}
 
+type Embedded5 struct {
+	Embedded6
+	Embedded7
+	Embedded8
+}
+
+type Embedded6 struct {
+	X int
+}
+
+type Embedded7 Embedded6
+
+type Embedded8 struct {
+	Embedded9
+}
+
+type Embedded9 struct {
+	X int
+	Y int
+}
+
+type Embedded10 struct {
+	Embedded11
+	Embedded12
+	Embedded13
+}
+
+type Embedded11 struct {
+	Embedded6
+}
+
+type Embedded12 struct {
+	Embedded6
+}
+
+type Embedded13 struct {
+	Embedded8
+}
+
 type TypeA struct {
 	Embedded1
 	String string `csv:"string"`
@@ -150,6 +189,30 @@ type InvalidType struct {
 	String struct{}
 }
 
+type TagPriority struct {
+	Foo int
+	Bar int `csv:"Foo"`
+}
+
+type embedded struct {
+	Foo int `csv:"foo"`
+	bar int `csv:"bar"`
+}
+
+type UnexportedEmbedded struct {
+	embedded
+}
+
+type A struct {
+	B
+	X int
+}
+
+type B struct {
+	*A
+	Y int
+}
+
 var Int = 10
 var String = "string"
 var PString = &String
@@ -183,15 +246,16 @@ func TestDecoder(t *testing.T) {
 		err            error
 	}{
 		{
-			desc: "embedded type - no tag",
+			desc: "embedded type - no tag - conflicting float tag",
 			in:   "string,int,float,bool\nstring,5,2.5,t",
 			out:  &TypeA{},
 			expected: &TypeA{
-				Embedded1: Embedded1{Float: 2.5},
+				Embedded1: Embedded1{},
 				Embedded2: Embedded2{Bool: true},
 				String:    "string",
 				Int:       5,
 			},
+			unused:         []int{2},
 			expectedRecord: []string{"string", "5", "2.5", "t"},
 			header:         []string{"string", "int", "float", "bool"},
 		},
@@ -209,7 +273,7 @@ string,"{""key"":""value""}"
 			header:         []string{"string", "json"},
 		},
 		{
-			desc: "embedded pointer type - no tag ",
+			desc: "embedded pointer type - no tag - type with conflicting tag",
 			in:   "string,float\nstring,2.5",
 			out:  &TypeC{},
 			expected: &TypeC{
@@ -362,6 +426,67 @@ string,"{""key"":""value""}"
 			expectedRecord: []string{"string", "10"},
 			inheader:       []string{"String", "int"},
 			header:         []string{"String", "int"},
+		},
+		{
+			desc: "tag priority over field",
+			in:   "Foo\n1",
+			out:  &TagPriority{},
+			expected: &TagPriority{
+				Foo: 0,
+				Bar: 1,
+			},
+			expectedRecord: []string{"1"},
+			header:         []string{"Foo"},
+		},
+		{
+			desc: "decode into unexported embedded field",
+			in:   "foo,bar\n1,1",
+			out:  &UnexportedEmbedded{},
+			expected: &UnexportedEmbedded{
+				embedded{
+					Foo: 1,
+					bar: 0,
+				},
+			},
+			expectedRecord: []string{"1", "1"},
+			header:         []string{"foo", "bar"},
+			unused:         []int{1},
+		},
+		{
+			desc: "embedded field conflict #1",
+			in:   "X,Y\n1,2",
+			out:  &Embedded5{},
+			expected: &Embedded5{
+				Embedded8: Embedded8{
+					Embedded9: Embedded9{Y: 2},
+				},
+			},
+			expectedRecord: []string{"1", "2"},
+			header:         []string{"X", "Y"},
+			unused:         []int{0},
+		},
+		{
+			desc: "embedded field conflict #2",
+			in:   "X,Y\n1,2",
+			out:  &Embedded10{},
+			expected: &Embedded10{
+				Embedded13: Embedded13{
+					Embedded8: Embedded8{
+						Embedded9: Embedded9{Y: 2},
+					},
+				},
+			},
+			expectedRecord: []string{"1", "2"},
+			header:         []string{"X", "Y"},
+			unused:         []int{0},
+		},
+		{
+			desc:           "circular reference",
+			in:             "X,Y\n1,2",
+			out:            &A{},
+			expected:       &A{X: 1, B: B{Y: 2}},
+			expectedRecord: []string{"1", "2"},
+			header:         []string{"X", "Y"},
 		},
 		{
 			desc: "unsupported type",

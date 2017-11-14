@@ -18,31 +18,40 @@ func decodeString(s string, v reflect.Value) error {
 	return nil
 }
 
-func decodeInt(s string, v reflect.Value) error {
-	n, err := strconv.ParseInt(s, 10, v.Type().Bits())
-	if err != nil {
-		return &UnmarshalTypeError{Value: s, Type: v.Type()}
+func decodeInt(t reflect.Type) decodeFunc {
+	bits := t.Bits()
+	return func(s string, v reflect.Value) error {
+		n, err := strconv.ParseInt(s, 10, bits)
+		if err != nil {
+			return &UnmarshalTypeError{Value: s, Type: v.Type()}
+		}
+		v.SetInt(n)
+		return nil
 	}
-	v.SetInt(n)
-	return nil
 }
 
-func decodeUint(s string, v reflect.Value) error {
-	n, err := strconv.ParseUint(s, 10, v.Type().Bits())
-	if err != nil {
-		return &UnmarshalTypeError{Value: s, Type: v.Type()}
+func decodeUint(t reflect.Type) decodeFunc {
+	bits := t.Bits()
+	return func(s string, v reflect.Value) error {
+		n, err := strconv.ParseUint(s, 10, bits)
+		if err != nil {
+			return &UnmarshalTypeError{Value: s, Type: t}
+		}
+		v.SetUint(n)
+		return nil
 	}
-	v.SetUint(n)
-	return nil
 }
 
-func decodeFloat(s string, v reflect.Value) error {
-	n, err := strconv.ParseFloat(s, v.Type().Bits())
-	if err != nil {
-		return &UnmarshalTypeError{Value: s, Type: v.Type()}
+func decodeFloat(t reflect.Type) decodeFunc {
+	bits := t.Bits()
+	return func(s string, v reflect.Value) error {
+		n, err := strconv.ParseFloat(s, bits)
+		if err != nil {
+			return &UnmarshalTypeError{Value: s, Type: t}
+		}
+		v.SetFloat(n)
+		return nil
 	}
-	v.SetFloat(n)
-	return nil
 }
 
 func decodeBool(s string, v reflect.Value) error {
@@ -70,17 +79,18 @@ func decodeFieldUnmarshaler(s string, v reflect.Value) error {
 	return v.Interface().(Unmarshaler).UnmarshalCSV(s)
 }
 
-func decodePtr(s string, v reflect.Value) error {
-	if v.IsNil() {
-		v.Set(reflect.New(v.Type().Elem()))
-	}
-	elem := v.Elem()
-
-	decode, err := decodeFn(elem.Type())
+func decodePtr(typ reflect.Type) (decodeFunc, error) {
+	next, err := decodeFn(typ.Elem())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return decode(s, elem)
+
+	return func(s string, v reflect.Value) error {
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
+		}
+		return next(s, v.Elem())
+	}, nil
 }
 
 func decodeInterface(s string, v reflect.Value) error {
@@ -97,17 +107,17 @@ func decodeInterface(s string, v reflect.Value) error {
 func decodeFn(typ reflect.Type) (decodeFunc, error) {
 	switch typ.Kind() {
 	case reflect.Ptr:
-		return decodePtr, nil
+		return decodePtr(typ)
 	case reflect.Interface:
 		return decodeInterface, nil
 	case reflect.String:
 		return decodeString, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return decodeInt, nil
+		return decodeInt(typ), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return decodeUint, nil
+		return decodeUint(typ), nil
 	case reflect.Float32, reflect.Float64:
-		return decodeFloat, nil
+		return decodeFloat(typ), nil
 	case reflect.Bool:
 		return decodeBool, nil
 	}

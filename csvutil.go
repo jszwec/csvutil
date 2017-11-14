@@ -2,6 +2,7 @@ package csvutil
 
 import (
 	"bytes"
+	"encoding/csv"
 	"io"
 	"reflect"
 )
@@ -85,4 +86,10 @@ func countRecords(s []byte) (n int) {
 		prev = s[i]
 		s = s[i+1:]
 	}
+}
+
+func newCSVReader(r io.Reader) *csv.Reader {
+	rr := csv.NewReader(r)
+	rr.ReuseRecord = true
+	return rr
 }
