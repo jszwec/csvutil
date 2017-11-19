@@ -76,7 +76,7 @@ func decodePtrFieldUnmarshaler(s string, v reflect.Value) error {
 }
 
 func decodeFieldUnmarshaler(s string, v reflect.Value) error {
-	return v.Interface().(Unmarshaler).UnmarshalCSV(s)
+	return v.Interface().(Unmarshaler).UnmarshalCSV([]byte(s))
 }
 
 func decodePtr(typ reflect.Type) (decodeFunc, error) {

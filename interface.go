@@ -19,7 +19,7 @@ type Writer interface {
 // Unmarshaler is the interface implemented by types that can unmarshal
 // a single record's field description of themselves.
 type Unmarshaler interface {
-	UnmarshalCSV(string) error
+	UnmarshalCSV([]byte) error
 }
 
 // Marshaler is the interface implemented by types that can marshal themselves

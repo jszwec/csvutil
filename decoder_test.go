@@ -22,8 +22,8 @@ type Embedded2 struct {
 
 type Embedded3 map[string]string
 
-func (e *Embedded3) UnmarshalCSV(s string) error {
-	return json.Unmarshal([]byte(s), e)
+func (e *Embedded3) UnmarshalCSV(s []byte) error {
+	return json.Unmarshal(s, e)
 }
 
 func (e Embedded3) MarshalCSV() ([]byte, error) {
@@ -157,8 +157,8 @@ type CSVUnmarshaler struct {
 	String string `csv:"string"`
 }
 
-func (t *CSVUnmarshaler) UnmarshalCSV(s string) error {
-	t.String = "unmarshalCSV:" + s
+func (t *CSVUnmarshaler) UnmarshalCSV(s []byte) error {
+	t.String = "unmarshalCSV:" + string(s)
 	return nil
 }
 
@@ -175,8 +175,8 @@ type CSVTextUnmarshaler struct {
 	String string `csv:"string"`
 }
 
-func (t *CSVTextUnmarshaler) UnmarshalCSV(s string) error {
-	t.String = "unmarshalCSV:" + s
+func (t *CSVTextUnmarshaler) UnmarshalCSV(s []byte) error {
+	t.String = "unmarshalCSV:" + string(s)
 	return nil
 }
 

@@ -9,8 +9,8 @@ import (
 
 type Bar int
 
-func (b *Bar) UnmarshalCSV(s string) error {
-	n, err := strconv.Atoi(s)
+func (b *Bar) UnmarshalCSV(data []byte) error {
+	n, err := strconv.Atoi(string(data))
 	*b = Bar(n)
 	return err
 }
