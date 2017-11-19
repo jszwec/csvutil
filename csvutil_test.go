@@ -207,3 +207,75 @@ line2,"line2"`),
 		})
 	}
 }
+
+func TestMarshal(t *testing.T) {
+	fixtures := []struct {
+		desc string
+		v    interface{}
+		out  [][]string
+		err  error
+	}{
+		{
+			desc: "slice with basic type",
+			v: []TypeI{
+				{String: "string", Int: 10},
+				{String: "", Int: 0},
+			},
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+				{"", ""},
+			},
+		},
+		{
+			desc: "slice with pointer type",
+			v: []*TypeI{
+				{String: "string", Int: 10},
+				{String: "", Int: 0},
+			},
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+				{"", ""},
+			},
+		},
+		{
+			desc: "slice pointer",
+			v: &[]*TypeI{
+				{String: "string", Int: 10},
+			},
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+			},
+		},
+		{
+			desc: "not a slice",
+			v:    int64(1),
+			err:  &InvalidMarshalError{Type: reflect.TypeOf(int64(1))},
+		},
+		{
+			desc: "slice of non pointers",
+			v:    []int64{1},
+			err:  &InvalidEncodeError{Type: reflect.TypeOf(int64(1))},
+		},
+	}
+
+	for _, f := range fixtures {
+		t.Run(f.desc, func(t *testing.T) {
+			b, err := Marshal(f.v)
+			if f.err != nil {
+				if !reflect.DeepEqual(f.err, err) {
+					t.Errorf("want err=%v; got %v", f.err, err)
+				}
+				return
+			} else if err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+
+			if expected := encodeCSV(t, f.out); string(b) != expected {
+				t.Errorf("want %s; got %s", expected, string(b))
+			}
+		})
+	}
+}

@@ -80,6 +80,16 @@ func (e *InvalidEncodeError) Error() string {
 	return "csvutil: Encode(" + e.Type.String() + ")"
 }
 
+// InvalidMarshalError is returned by Marshal when the provided type was
+// not a slice.
+type InvalidMarshalError struct {
+	Type reflect.Type
+}
+
+func (e *InvalidMarshalError) Error() string {
+	return "csvutil: Marshal(non-slice " + e.Type.String() + ")"
+}
+
 // MarshalerError is returned by Encoder when MarshalCSV or MarshalText returned
 // an error.
 type MarshalerError struct {

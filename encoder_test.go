@@ -11,6 +11,8 @@ import (
 
 var Error = errors.New("error")
 
+type embeddedMap map[string]string
+
 type Embedded14 Embedded3
 
 func (e *Embedded14) MarshalCSV() ([]byte, error) {
@@ -348,6 +350,19 @@ func TestEncoder(t *testing.T) {
 			out: [][]string{
 				{"string", "int"},
 				{"", ""},
+			},
+		},
+		{
+			desc: "unexported non-struct embedded",
+			in: []interface{}{
+				struct {
+					A int
+					embeddedMap
+				}{1, make(embeddedMap)},
+			},
+			out: [][]string{
+				{"A"},
+				{"1"},
 			},
 		},
 		{
