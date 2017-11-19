@@ -16,16 +16,12 @@ type fields []field
 
 func (fs fields) byIndex() {
 	sort.Slice(fs, func(i, j int) bool {
-		if len(fs[i].index) != len(fs[j].index) {
-			return len(fs[i].index) < len(fs[j].index)
-		}
-
-		for ii, n := range fs[i].index {
-			if n != fs[j].index[ii] {
-				return n < fs[j].index[ii]
+		for k, n := range fs[i].index {
+			if n != fs[j].index[k] {
+				return n < fs[j].index[k]
 			}
 		}
-		return false
+		return len(fs[i].index) < len(fs[j].index)
 	})
 }
 

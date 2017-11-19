@@ -26,6 +26,10 @@ func (e *Embedded3) UnmarshalCSV(s string) error {
 	return json.Unmarshal([]byte(s), e)
 }
 
+func (e Embedded3) MarshalCSV() ([]byte, error) {
+	return json.Marshal(e)
+}
+
 type Embedded4 interface{}
 
 type Embedded5 struct {

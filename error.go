@@ -69,3 +69,25 @@ func (e *InvalidUnmarshalError) Error() string {
 
 	return "csvutil: Unmarshal(non-slice pointer)"
 }
+
+// InvalidEncodeError is returned by Encode when the passed argument v is not
+// a struct.
+type InvalidEncodeError struct {
+	Type reflect.Type
+}
+
+func (e *InvalidEncodeError) Error() string {
+	return "csvutil: Encode(" + e.Type.String() + ")"
+}
+
+// MarshalerError is returned by Encoder when MarshalCSV or MarshalText returned
+// an error.
+type MarshalerError struct {
+	Type          reflect.Type
+	MarshalerType string
+	Err           error
+}
+
+func (e *MarshalerError) Error() string {
+	return "csvutil: error calling " + e.MarshalerType + " for type " + e.Type.String() + ": " + e.Err.Error()
+}
