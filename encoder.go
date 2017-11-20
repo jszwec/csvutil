@@ -99,6 +99,11 @@ func NewEncoder(w Writer) *Encoder {
 // Nil values will be encoded as empty strings. Same will happen if 'omitempty'
 // tag is set, and the value is a default value like 0, false or nil interface.
 //
+// Bool types are encoded as 'true' or 'false'.
+//
+// Float types are encoded using strconv.FormatFloat with precision -1 and 'G'
+// format.
+//
 // Fields can be excluded from encoding by using '-' tag option.
 //
 // Examples of struct tags:
