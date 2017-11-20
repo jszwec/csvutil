@@ -12,6 +12,8 @@ type decField struct {
 
 // A Decoder reads and decodes string records into structs.
 type Decoder struct {
+	// Tag defines which key in the struct field's tag to scan for names and
+	// options (Default: 'csv').
 	Tag string
 
 	r      Reader
@@ -206,7 +208,7 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value, t reflect.Ty
 
 func (d *Decoder) tag() string {
 	if d.Tag == "" {
-		return "csv"
+		return defaultTag
 	}
 	return d.Tag
 }

@@ -7,6 +7,8 @@ import (
 	"reflect"
 )
 
+const defaultTag = "csv"
+
 // Unmarshal parses the CSV-encoded data and stores the result in the slice
 // pointed to by v. If v is nil or not a pointer to a slice, Unmarshal returns
 // an InvalidUnmarshalError.

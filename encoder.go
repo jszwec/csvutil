@@ -58,6 +58,8 @@ func (c *encCache) reset(fieldsLen int) {
 
 // Encoder writes structs CSV representations to the output stream.
 type Encoder struct {
+	// Tag defines which key in the struct field's tag to scan for names and
+	// options (Default: 'csv').
 	Tag string
 
 	w        Writer
@@ -191,7 +193,7 @@ func (e *Encoder) marshal(v reflect.Value) error {
 
 func (e *Encoder) tag() string {
 	if e.Tag == "" {
-		return "csv"
+		return defaultTag
 	}
 	return e.Tag
 }
