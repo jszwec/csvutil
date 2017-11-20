@@ -105,6 +105,13 @@ func decodeInterface(s string, v reflect.Value) error {
 }
 
 func decodeFn(typ reflect.Type) (decodeFunc, error) {
+	if reflect.PtrTo(typ).Implements(csvUnmarshaler) {
+		return decodePtrFieldUnmarshaler, nil
+	}
+	if reflect.PtrTo(typ).Implements(textUnmarshaler) {
+		return decodePtrTextUnmarshaler, nil
+	}
+
 	switch typ.Kind() {
 	case reflect.Ptr:
 		return decodePtr(typ)
@@ -120,13 +127,6 @@ func decodeFn(typ reflect.Type) (decodeFunc, error) {
 		return decodeFloat(typ), nil
 	case reflect.Bool:
 		return decodeBool, nil
-	}
-
-	if reflect.PtrTo(typ).Implements(csvUnmarshaler) {
-		return decodePtrFieldUnmarshaler, nil
-	}
-	if reflect.PtrTo(typ).Implements(textUnmarshaler) {
-		return decodePtrTextUnmarshaler, nil
 	}
 
 	return nil, &UnsupportedTypeError{Type: typ}

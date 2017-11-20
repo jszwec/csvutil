@@ -402,6 +402,18 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			desc: "primitive type alias implementing Marshaler",
+			in: []interface{}{
+				EnumType{Enum: EnumFirst},
+				EnumType{Enum: EnumSecond},
+			},
+			out: [][]string{
+				{"enum"},
+				{"first"},
+				{"second"},
+			},
+		},
+		{
 			desc: "csv marshaler error",
 			in: []interface{}{
 				struct {

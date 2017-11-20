@@ -115,6 +115,20 @@ func encodePtr(typ reflect.Type) (encodeFunc, error) {
 }
 
 func encodeFn(typ reflect.Type) (encodeFunc, error) {
+	if typ.Implements(csvMarshaler) {
+		return encodeMarshaler, nil
+	}
+	if reflect.PtrTo(typ).Implements(csvMarshaler) {
+		return encodePtrMarshaler, nil
+	}
+
+	if typ.Implements(textMarshaler) {
+		return encodeTextMarshaler, nil
+	}
+	if reflect.PtrTo(typ).Implements(textMarshaler) {
+		return encodePtrTextMarshaler, nil
+	}
+
 	switch typ.Kind() {
 	case reflect.String:
 		return encodeString, nil
@@ -130,20 +144,6 @@ func encodeFn(typ reflect.Type) (encodeFunc, error) {
 		return encodeInterface, nil
 	case reflect.Ptr:
 		return encodePtr(typ)
-	}
-
-	if typ.Implements(csvMarshaler) {
-		return encodeMarshaler, nil
-	}
-	if reflect.PtrTo(typ).Implements(csvMarshaler) {
-		return encodePtrMarshaler, nil
-	}
-
-	if typ.Implements(textMarshaler) {
-		return encodeTextMarshaler, nil
-	}
-	if reflect.PtrTo(typ).Implements(textMarshaler) {
-		return encodePtrTextMarshaler, nil
 	}
 
 	return nil, &UnsupportedTypeError{Type: typ}

@@ -10,6 +10,42 @@ import (
 	"testing"
 )
 
+type Enum uint8
+
+const (
+	EnumDefault = iota
+	EnumFirst
+	EnumSecond
+)
+
+func (e Enum) MarshalCSV() ([]byte, error) {
+	switch e {
+	case EnumFirst:
+		return []byte("first"), nil
+	case EnumSecond:
+		return []byte("second"), nil
+	default:
+		return []byte("default"), nil
+	}
+}
+
+func (e *Enum) UnmarshalCSV(data []byte) error {
+	s := string(data)
+	switch s {
+	case "first":
+		*e = EnumFirst
+	case "second":
+		*e = EnumSecond
+	default:
+		*e = EnumDefault
+	}
+	return nil
+}
+
+type EnumType struct {
+	Enum Enum `csv:"enum"`
+}
+
 type Embedded1 struct {
 	String string  `csv:"string"`
 	Float  float64 `csv:"float"`
@@ -491,6 +527,14 @@ string,"{""key"":""value""}"
 			expected:       &A{X: 1, B: B{Y: 2}},
 			expectedRecord: []string{"1", "2"},
 			header:         []string{"X", "Y"},
+		},
+		{
+			desc:           "primitive type alias with Unmarshaler",
+			in:             "enum\nfirst",
+			out:            &EnumType{},
+			expected:       &EnumType{Enum: EnumFirst},
+			expectedRecord: []string{"first"},
+			header:         []string{"enum"},
 		},
 		{
 			desc: "unsupported type",
