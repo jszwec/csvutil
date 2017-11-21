@@ -140,7 +140,7 @@ func buildFields(typ reflect.Type, tagName string) fields {
 				index: makeIndex(f.index, i),
 			}
 
-			if sf.Anonymous && ft.Kind() == reflect.Struct {
+			if sf.Anonymous && ft.Kind() == reflect.Struct && tag.empty {
 				q = append(q, newf)
 				continue
 			}

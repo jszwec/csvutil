@@ -191,6 +191,18 @@ type Unmarshalers struct {
 	PCSVTextUnmarshaler *CSVTextUnmarshaler `csv:"pcsv-text"`
 }
 
+type EmbeddedUnmarshalers struct {
+	CSVUnmarshaler     `csv:"csv"`
+	TextUnmarshaler    `csv:"text"`
+	CSVTextUnmarshaler `csv:"csv-text"`
+}
+
+type EmbeddedPtrUnmarshalers struct {
+	*CSVUnmarshaler     `csv:"csv"`
+	*TextUnmarshaler    `csv:"text"`
+	*CSVTextUnmarshaler `csv:"csv-text"`
+}
+
 type CSVUnmarshaler struct {
 	String string `csv:"string"`
 }
@@ -456,6 +468,30 @@ string,"{""key"":""value""}"
 			},
 			expectedRecord: []string{"field", "field", "field", "field", "field", "field"},
 			header:         []string{"csv", "pcsv", "text", "ptext", "csv-text", "pcsv-text"},
+		},
+		{
+			desc: "decode embedded tagged unmarshalers",
+			in:   "csv,text,csv-text\nfield,field,field",
+			out:  &EmbeddedUnmarshalers{},
+			expected: &EmbeddedUnmarshalers{
+				CSVUnmarshaler:     CSVUnmarshaler{"unmarshalCSV:field"},
+				TextUnmarshaler:    TextUnmarshaler{"unmarshalText:field"},
+				CSVTextUnmarshaler: CSVTextUnmarshaler{"unmarshalCSV:field"},
+			},
+			expectedRecord: []string{"field", "field", "field"},
+			header:         []string{"csv", "text", "csv-text"},
+		},
+		{
+			desc: "decode pointer embedded tagged unmarshalers",
+			in:   "csv,text,csv-text\nfield,field,field",
+			out:  &EmbeddedPtrUnmarshalers{},
+			expected: &EmbeddedPtrUnmarshalers{
+				CSVUnmarshaler:     &CSVUnmarshaler{"unmarshalCSV:field"},
+				TextUnmarshaler:    &TextUnmarshaler{"unmarshalText:field"},
+				CSVTextUnmarshaler: &CSVTextUnmarshaler{"unmarshalCSV:field"},
+			},
+			expectedRecord: []string{"field", "field", "field"},
+			header:         []string{"csv", "text", "csv-text"},
 		},
 		{
 			desc: "custom header",

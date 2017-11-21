@@ -424,6 +424,32 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			desc: "embedded tagged marshalers",
+			in: []interface{}{
+				struct {
+					CSVMarshaler  `csv:"csv"`
+					TextMarshaler `csv:"text"`
+				}{},
+			},
+			out: [][]string{
+				{"csv", "text"},
+				{"csvmarshaler", "textmarshaler"},
+			},
+		},
+		{
+			desc: "embedded pointer tagged marshalers",
+			in: []interface{}{
+				struct {
+					*CSVMarshaler  `csv:"csv"`
+					*TextMarshaler `csv:"text"`
+				}{&CSVMarshaler{}, &TextMarshaler{}},
+			},
+			out: [][]string{
+				{"csv", "text"},
+				{"csvmarshaler", "textmarshaler"},
+			},
+		},
+		{
 			desc: "csv marshaler error",
 			in: []interface{}{
 				struct {
