@@ -1,7 +1,7 @@
 csvutil [![GoDoc](https://godoc.org/github.com/jszwec/csvutil?status.svg)](http://godoc.org/github.com/jszwec/csvutil) [![Build Status](https://travis-ci.org/jszwec/csvutil.svg?branch=master)](https://travis-ci.org/jszwec/csvutil) [![Build status](https://ci.appveyor.com/api/projects/status/eiyx0htjrieoo821/branch/master?svg=true)](https://ci.appveyor.com/project/jszwec/csvutil/branch/master)
 =================
 
-package csvutil provides a fast and idiomatic way to decode csv inputs.
+package csvutil provides fast and idiomatic mapping between CSV and Go values.
 
 Installation
 ------------
@@ -11,7 +11,9 @@ Installation
 Performance
 ------------
 
-csvutil provides the best decoding performance with small memory usage.
+csvutil provides the best encoding and decoding performance with small memory usage.
+
+### Unmarshal ###
 
 benchmark code: https://gist.github.com/jszwec/e8515e741190454fa3494bcd3e1f100f
 
@@ -45,8 +47,34 @@ BenchmarkUnmarshal/easycsv.ReadAll/10000_records-8      	      20	  70387764 ns/
 BenchmarkUnmarshal/easycsv.ReadAll/100000_records-8     	       2	 737079728 ns/op	190822472 B/op	 3400081 allocs/op
 ```
 
+### Marshal ###
+
+benchmark code: https://gist.github.com/jszwec/31980321e1852ebb5615a44ccf374f17
+
+csvutil:
+```
+BenchmarkMarshal/csvutil.Marshal/1_record-8         	  200000	      5992 ns/op	    6896 B/op	      29 allocs/op
+BenchmarkMarshal/csvutil.Marshal/10_records-8       	  100000	     23072 ns/op	    8528 B/op	      48 allocs/op
+BenchmarkMarshal/csvutil.Marshal/100_records-8      	   10000	    191947 ns/op	   33136 B/op	     229 allocs/op
+BenchmarkMarshal/csvutil.Marshal/1000_records-8     	    1000	   1919035 ns/op	  245441 B/op	    2031 allocs/op
+BenchmarkMarshal/csvutil.Marshal/10000_records-8    	     100	  19337478 ns/op	 2322892 B/op	   20034 allocs/op
+BenchmarkMarshal/csvutil.Marshal/100000_records-8   	      10	 196762691 ns/op	30363862 B/op	  200038 allocs/op
+```
+
+gocsv:
+```
+BenchmarkMarshal/gocsv.Marshal/1_record-8           	  200000	      7217 ns/op	    5809 B/op	      82 allocs/op
+BenchmarkMarshal/gocsv.Marshal/10_records-8         	   50000	     32727 ns/op	    9315 B/op	     389 allocs/op
+BenchmarkMarshal/gocsv.Marshal/100_records-8        	    5000	    287381 ns/op	   52659 B/op	    3450 allocs/op
+BenchmarkMarshal/gocsv.Marshal/1000_records-8       	     500	   2797881 ns/op	  452389 B/op	   34052 allocs/op
+BenchmarkMarshal/gocsv.Marshal/10000_records-8      	      50	  28550795 ns/op	 4411769 B/op	  340063 allocs/op
+BenchmarkMarshal/gocsv.Marshal/100000_records-8     	       5	 298698915 ns/op	51969574 B/op	 3400085 allocs/op
+```
+
 Example
 --------
+
+### Unmarshal ###
 
 ```go
 	var csvInput = []byte(`name,age
@@ -66,4 +94,37 @@ john,27`)
 
 	// Output:
 	// [{Name:jacek Age:26} {Name:john Age:27}]	
+```
+
+### Marshal ###
+
+```go
+	type Address struct {
+		City    string
+		Country string
+	}
+
+	type User struct {
+		Name string
+		Address
+		Age int `csv:"age,omitempty"`
+	}
+
+	users := []User{
+		{Name: "John", Address: Address{"Boston", "USA"}, Age: 26},
+		{Name: "Bob", Address: Address{"LA", "USA"}, Age: 27},
+		{Name: "Alice", Address: Address{"SF", "USA"}},
+	}
+
+	b, err := csvutil.Marshal(users)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	fmt.Println(string(b))
+
+	// Output:
+	// Name,City,Country,age
+	// John,Boston,USA,26
+	// Bob,LA,USA,27
+	// Alice,SF,USA,
 ```
