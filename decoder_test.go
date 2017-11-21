@@ -10,6 +10,8 @@ import (
 	"testing"
 )
 
+type Float float64
+
 type Enum uint8
 
 const (
@@ -535,6 +537,14 @@ string,"{""key"":""value""}"
 			expected:       &EnumType{Enum: EnumFirst},
 			expectedRecord: []string{"first"},
 			header:         []string{"enum"},
+		},
+		{
+			desc:           "alias type",
+			in:             "Float\n3.14",
+			out:            &struct{ Float float64 }{},
+			expected:       &struct{ Float float64 }{3.14},
+			expectedRecord: []string{"3.14"},
+			header:         []string{"Float"},
 		},
 		{
 			desc: "unsupported type",

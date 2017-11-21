@@ -414,6 +414,16 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			desc: "aliased type",
+			in: []interface{}{
+				struct{ Float float64 }{3.14},
+			},
+			out: [][]string{
+				{"Float"},
+				{"3.14"},
+			},
+		},
+		{
 			desc: "csv marshaler error",
 			in: []interface{}{
 				struct {
