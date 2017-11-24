@@ -2,6 +2,7 @@ package csvutil
 
 import (
 	"encoding"
+	"encoding/base64"
 	"reflect"
 	"strconv"
 )
@@ -104,6 +105,15 @@ func decodeInterface(s string, v reflect.Value) error {
 	}
 }
 
+func decodeBytes(s string, v reflect.Value) error {
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	v.SetBytes(b)
+	return nil
+}
+
 func decodeFn(typ reflect.Type) (decodeFunc, error) {
 	if reflect.PtrTo(typ).Implements(csvUnmarshaler) {
 		return decodePtrFieldUnmarshaler, nil
@@ -127,6 +137,10 @@ func decodeFn(typ reflect.Type) (decodeFunc, error) {
 		return decodeFloat(typ), nil
 	case reflect.Bool:
 		return decodeBool, nil
+	case reflect.Slice:
+		if typ.Elem().Kind() == reflect.Uint8 {
+			return decodeBytes, nil
+		}
 	}
 
 	return nil, &UnsupportedTypeError{Type: typ}

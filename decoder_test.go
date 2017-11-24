@@ -2,6 +2,7 @@ package csvutil
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/csv"
 	"encoding/json"
 	"io"
@@ -9,6 +10,14 @@ import (
 	"strings"
 	"testing"
 )
+
+var Binary = []byte("binary-data")
+
+var EncodedBinary = base64.StdEncoding.EncodeToString(Binary)
+
+var BinaryLarge = bytes.Repeat([]byte("1"), 128*1024)
+
+var EncodedBinaryLarge = base64.StdEncoding.EncodeToString(BinaryLarge)
 
 type Float float64
 
@@ -167,6 +176,8 @@ type TypeF struct {
 	Pbool    *bool        `csv:"pbool"`
 	V        interface{}  `csv:"interface"`
 	Pv       *interface{} `csv:"pinterface"`
+	Binary   []byte       `csv:"binary"`
+	PBinary  *[]byte      `csv:"pbinary"`
 }
 
 type TypeG struct {
@@ -365,8 +376,9 @@ string,"{""key"":""value""}"
 			desc: "basic types",
 			in: "int,pint,int8,pint8,int16,pint16,int32,pint32,int64,pint64,uint," +
 				"puint,uint8,puint8,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
-				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface\n" +
-				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,true,true,true,1",
+				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
+				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,true,true,true,1," +
+				EncodedBinary + "," + EncodedBinaryLarge,
 			out: &TypeF{},
 			expected: &TypeF{
 				Int:      1,
@@ -399,10 +411,12 @@ string,"{""key"":""value""}"
 				Pbool:    pbool(true),
 				V:        "true",
 				Pv:       pinterface("1"),
+				Binary:   Binary,
+				PBinary:  &BinaryLarge,
 			},
 			expectedRecord: []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
 				"13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26",
-				"true", "true", "true", "1"},
+				"true", "true", "true", "1", EncodedBinary, EncodedBinaryLarge},
 			header: []string{"int",
 				"pint",
 				"int8",
@@ -433,6 +447,8 @@ string,"{""key"":""value""}"
 				"pbool",
 				"interface",
 				"pinterface",
+				"binary",
+				"pbinary",
 			},
 		},
 		{

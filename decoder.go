@@ -96,6 +96,8 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // part of the main struct. However, fields in the main struct have bigger
 // priority and they are populated first. If main struct and anonymous struct
 // field have the same fields, the main struct's fields will be populated.
+//
+// Fields of type []byte expect the data to be base64 encoded strings.
 func (d *Decoder) Decode(v interface{}) (err error) {
 	d.record, err = d.r.Read()
 	if err != nil {

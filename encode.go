@@ -3,6 +3,7 @@ package csvutil
 import (
 	"bytes"
 	"encoding"
+	"encoding/base64"
 	"reflect"
 	"strconv"
 )
@@ -116,6 +117,14 @@ func encodePtr(typ reflect.Type) (encodeFunc, error) {
 	}, nil
 }
 
+func encodeBinary(v reflect.Value, buf *bytes.Buffer, _ bool) (int, error) {
+	b := v.Bytes()
+	w := base64.NewEncoder(base64.StdEncoding, buf)
+	w.Write(b)
+	w.Close()
+	return base64.StdEncoding.EncodedLen(len(b)), nil
+}
+
 func encodeFn(typ reflect.Type) (encodeFunc, error) {
 	if typ.Implements(csvMarshaler) {
 		return encodeMarshaler, nil
@@ -146,6 +155,10 @@ func encodeFn(typ reflect.Type) (encodeFunc, error) {
 		return encodeInterface, nil
 	case reflect.Ptr:
 		return encodePtr(typ)
+	case reflect.Slice:
+		if typ.Elem().Kind() == reflect.Uint8 {
+			return encodeBinary, nil
+		}
 	}
 
 	return nil, &UnsupportedTypeError{Type: typ}

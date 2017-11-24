@@ -106,6 +106,8 @@ func NewEncoder(w Writer) *Encoder {
 // Float types are encoded using strconv.FormatFloat with precision -1 and 'G'
 // format.
 //
+// Fields of type []byte are being encoded as base64-encoded strings.
+//
 // Fields can be excluded from encoding by using '-' tag option.
 //
 // Examples of struct tags:
