@@ -83,7 +83,7 @@ func Marshal(v interface{}) ([]byte, error) {
 
 	l := val.Len()
 	for i := 0; i < l; i++ {
-		if err := enc.Encode(val.Index(i).Interface()); err != nil {
+		if err := enc.encode(val.Index(i)); err != nil {
 			return nil, err
 		}
 	}

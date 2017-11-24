@@ -130,13 +130,17 @@ func NewEncoder(w Writer) *Encoder {
 // Encode doesn't flush data. The caller is responsible for calling Flush() if
 // the used Writer supports it.
 func (e *Encoder) Encode(v interface{}) error {
-	vv := indirect(reflect.ValueOf(v))
-	if vv.Kind() != reflect.Struct {
-		return &InvalidEncodeError{vv.Type()}
+	return e.encode(reflect.ValueOf(v))
+}
+
+func (e *Encoder) encode(v reflect.Value) error {
+	v = indirect(v)
+	if v.Kind() != reflect.Struct {
+		return &InvalidEncodeError{v.Type()}
 	}
 
 	if e.noHeader {
-		k := typeKey{e.tag(), vv.Type()}
+		k := typeKey{e.tag(), v.Type()}
 		fields, err := e.cache.fields(k, e.tag())
 		if err != nil {
 			return err
@@ -148,7 +152,7 @@ func (e *Encoder) Encode(v interface{}) error {
 		e.noHeader = false
 	}
 
-	return e.marshal(vv)
+	return e.marshal(v)
 }
 
 func (e *Encoder) encodeHeader(fields []encField) error {

@@ -57,22 +57,22 @@ benchmark code: https://gist.github.com/jszwec/31980321e1852ebb5615a44ccf374f17
 
 csvutil:
 ```
-BenchmarkMarshal/csvutil.Marshal/1_record-8         	  200000	      5992 ns/op	    6896 B/op	      29 allocs/op
-BenchmarkMarshal/csvutil.Marshal/10_records-8       	  100000	     23072 ns/op	    8528 B/op	      48 allocs/op
-BenchmarkMarshal/csvutil.Marshal/100_records-8      	   10000	    191947 ns/op	   33136 B/op	     229 allocs/op
-BenchmarkMarshal/csvutil.Marshal/1000_records-8     	    1000	   1919035 ns/op	  245441 B/op	    2031 allocs/op
-BenchmarkMarshal/csvutil.Marshal/10000_records-8    	     100	  19337478 ns/op	 2322892 B/op	   20034 allocs/op
-BenchmarkMarshal/csvutil.Marshal/100000_records-8   	      10	 196762691 ns/op	30363862 B/op	  200038 allocs/op
+BenchmarkMarshal/csvutil.Marshal/1_record-8         	  200000	      6010 ns/op	    6816 B/op	      28 allocs/op
+BenchmarkMarshal/csvutil.Marshal/10_records-8       	  100000	     22391 ns/op	    7728 B/op	      38 allocs/op
+BenchmarkMarshal/csvutil.Marshal/100_records-8      	   10000	    189905 ns/op	   25139 B/op	     129 allocs/op
+BenchmarkMarshal/csvutil.Marshal/1000_records-8     	    1000	   1812082 ns/op	  165458 B/op	    1031 allocs/op
+BenchmarkMarshal/csvutil.Marshal/10000_records-8    	     100	  18112811 ns/op	 1523067 B/op	   10034 allocs/op
+BenchmarkMarshal/csvutil.Marshal/100000_records-8   	      10	 183706155 ns/op	22364681 B/op	  100038 allocs/op
 ```
 
 gocsv:
 ```
-BenchmarkMarshal/gocsv.Marshal/1_record-8           	  200000	      7217 ns/op	    5809 B/op	      82 allocs/op
-BenchmarkMarshal/gocsv.Marshal/10_records-8         	   50000	     32727 ns/op	    9315 B/op	     389 allocs/op
-BenchmarkMarshal/gocsv.Marshal/100_records-8        	    5000	    287381 ns/op	   52659 B/op	    3450 allocs/op
-BenchmarkMarshal/gocsv.Marshal/1000_records-8       	     500	   2797881 ns/op	  452389 B/op	   34052 allocs/op
-BenchmarkMarshal/gocsv.Marshal/10000_records-8      	      50	  28550795 ns/op	 4411769 B/op	  340063 allocs/op
-BenchmarkMarshal/gocsv.Marshal/100000_records-8     	       5	 298698915 ns/op	51969574 B/op	 3400085 allocs/op
+BenchmarkMarshal/gocsv.Marshal/1_record-8           	  200000	      7291 ns/op	    5810 B/op	      82 allocs/op
+BenchmarkMarshal/gocsv.Marshal/10_records-8         	   50000	     32093 ns/op	    9316 B/op	     389 allocs/op
+BenchmarkMarshal/gocsv.Marshal/100_records-8        	    5000	    284238 ns/op	   52673 B/op	    3450 allocs/op
+BenchmarkMarshal/gocsv.Marshal/1000_records-8       	     500	   2777589 ns/op	  452503 B/op	   34052 allocs/op
+BenchmarkMarshal/gocsv.Marshal/10000_records-8      	      50	  28477563 ns/op	 4413044 B/op	  340064 allocs/op
+BenchmarkMarshal/gocsv.Marshal/100000_records-8     	       5	 286370004 ns/op	51970707 B/op	 3400084 allocs/op
 ```
 
 Example

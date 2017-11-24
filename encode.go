@@ -15,7 +15,7 @@ var (
 type encodeFunc func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error)
 
 func encodeString(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
-	return buf.WriteString(v.Interface().(string))
+	return buf.WriteString(v.String())
 }
 
 func encodeInt() encodeFunc {
@@ -67,7 +67,9 @@ func encodeInterface(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, e
 	if !v.IsValid() || v.IsNil() || !v.Elem().IsValid() {
 		return 0, nil
 	}
-	enc, err := encodeFn(v.Elem().Type())
+
+	v = v.Elem()
+	enc, err := encodeFn(v.Type())
 	if err != nil {
 		return 0, err
 	}
