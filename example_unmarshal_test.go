@@ -7,9 +7,11 @@ import (
 )
 
 func ExampleDecoder_unmarshal() {
-	var csvInput = []byte(`name,age
+	var csvInput = []byte(`
+name,age
 jacek,26
-john,27`)
+john,27`,
+	)
 
 	type User struct {
 		Name string `csv:"name"`

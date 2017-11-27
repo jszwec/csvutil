@@ -12,6 +12,66 @@ Installation
 
     go get github.com/jszwec/csvutil
 
+Example
+--------
+
+### Unmarshal ###
+
+```go
+	var csvInput = []byte(`
+name,age
+jacek,26
+john,27`,
+	)
+
+	type User struct {
+		Name string `csv:"name"`
+		Age  int    `csv:"age"`
+	}
+
+	var users []User
+	if err := csvutil.Unmarshal(csvInput, &users); err != nil {
+		fmt.Println("error:", err)
+	}
+	fmt.Printf("%+v", users)
+
+	// Output:
+	// [{Name:jacek Age:26} {Name:john Age:27}]
+```
+
+### Marshal ###
+
+```go
+	type Address struct {
+		City    string
+		Country string
+	}
+
+	type User struct {
+		Name string
+		Address
+		Age int `csv:"age,omitempty"`
+	}
+
+	users := []User{
+		{Name: "John", Address: Address{"Boston", "USA"}, Age: 26},
+		{Name: "Bob", Address: Address{"LA", "USA"}, Age: 27},
+		{Name: "Alice", Address: Address{"SF", "USA"}},
+	}
+
+	b, err := csvutil.Marshal(users)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	fmt.Println(string(b))
+
+	// Output:
+	// Name,City,Country,age
+	// John,Boston,USA,26
+	// Bob,LA,USA,27
+	// Alice,SF,USA,
+```
+
 Performance
 ------------
 
@@ -73,62 +133,4 @@ BenchmarkMarshal/gocsv.Marshal/100_records-8        	    5000	    284238 ns/op	 
 BenchmarkMarshal/gocsv.Marshal/1000_records-8       	     500	   2777589 ns/op	  452503 B/op	   34052 allocs/op
 BenchmarkMarshal/gocsv.Marshal/10000_records-8      	      50	  28477563 ns/op	 4413044 B/op	  340064 allocs/op
 BenchmarkMarshal/gocsv.Marshal/100000_records-8     	       5	 286370004 ns/op	51970707 B/op	 3400084 allocs/op
-```
-
-Example
---------
-
-### Unmarshal ###
-
-```go
-	var csvInput = []byte(`name,age
-jacek,26
-john,27`)
-
-	type User struct {
-		Name string `csv:"name"`
-		Age  int    `csv:"age"`
-	}
-
-	var users []User
-	if err := csvutil.Unmarshal(csvInput, &users); err != nil {
-		fmt.Println("error:", err)
-	}
-	fmt.Printf("%+v", users)
-
-	// Output:
-	// [{Name:jacek Age:26} {Name:john Age:27}]	
-```
-
-### Marshal ###
-
-```go
-	type Address struct {
-		City    string
-		Country string
-	}
-
-	type User struct {
-		Name string
-		Address
-		Age int `csv:"age,omitempty"`
-	}
-
-	users := []User{
-		{Name: "John", Address: Address{"Boston", "USA"}, Age: 26},
-		{Name: "Bob", Address: Address{"LA", "USA"}, Age: 27},
-		{Name: "Alice", Address: Address{"SF", "USA"}},
-	}
-
-	b, err := csvutil.Marshal(users)
-	if err != nil {
-		fmt.Println("error:", err)
-	}
-	fmt.Println(string(b))
-
-	// Output:
-	// Name,City,Country,age
-	// John,Boston,USA,26
-	// Bob,LA,USA,27
-	// Alice,SF,USA,
 ```
