@@ -117,7 +117,7 @@ func encodePtr(typ reflect.Type) (encodeFunc, error) {
 	}, nil
 }
 
-func encodeBinary(v reflect.Value, buf *bytes.Buffer, _ bool) (int, error) {
+func encodeBytes(v reflect.Value, buf *bytes.Buffer, _ bool) (int, error) {
 	b := v.Bytes()
 	w := base64.NewEncoder(base64.StdEncoding, buf)
 	w.Write(b)
@@ -157,7 +157,7 @@ func encodeFn(typ reflect.Type) (encodeFunc, error) {
 		return encodePtr(typ)
 	case reflect.Slice:
 		if typ.Elem().Kind() == reflect.Uint8 {
-			return encodeBinary, nil
+			return encodeBytes, nil
 		}
 	}
 
