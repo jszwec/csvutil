@@ -278,4 +278,27 @@ func TestMarshal(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("invalid marshal error message", func(t *testing.T) {
+		expected := "csvutil: Marshal(non-slice int64)"
+		_, err := Marshal(int64(1))
+		if err == nil {
+			t.Fatal("want err not to be nil")
+		}
+		if err.Error() != expected {
+			t.Errorf("want=%s; got %s", expected, err.Error())
+		}
+	})
+
+	t.Run("unmarshal type error message", func(t *testing.T) {
+		expected := "csvutil: cannot unmarshal field into Go value of type int"
+		err := Unmarshal([]byte("X\nfield"), &[]A{})
+		if err == nil {
+			t.Fatal("want err not to be nil")
+		}
+		if err.Error() != expected {
+			t.Errorf("want=%s; got %s", expected, err.Error())
+		}
+	})
+
 }

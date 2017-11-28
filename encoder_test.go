@@ -576,6 +576,41 @@ func TestEncoder(t *testing.T) {
 		}
 	})
 
+	t.Run("error messages", func(t *testing.T) {
+		fixtures := []struct {
+			desc     string
+			expected string
+			v        interface{}
+		}{
+			{
+				desc:     "invalid encode error message",
+				expected: "csvutil: Encode(int64)",
+				v:        int64(1),
+			},
+			{
+				desc:     "unsupported type error message",
+				expected: "csvutil: unsupported type: struct {}",
+				v:        struct{ InvalidType }{},
+			},
+			{
+				desc:     "marshaler error message",
+				expected: "csvutil: error calling MarshalText for type csvutil.TextMarshaler: " + Error.Error(),
+				v:        struct{ M TextMarshaler }{TextMarshaler{Error}},
+			},
+		}
+
+		for _, f := range fixtures {
+			t.Run(f.desc, func(t *testing.T) {
+				err := NewEncoder(csv.NewWriter(bytes.NewBuffer(nil))).Encode(f.v)
+				if err == nil {
+					t.Fatal("want err not to be nil")
+				}
+				if err.Error() != f.expected {
+					t.Errorf("want=%s; got %s", f.expected, err.Error())
+				}
+			})
+		}
+	})
 }
 
 func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {
