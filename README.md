@@ -21,6 +21,8 @@ Example
 
 ### Unmarshal ###
 
+Nice and easy Unmarshal is using the std csv.Reader with its default options. Use [Decoder](https://godoc.org/github.com/jszwec/csvutil#Decoder) for streaming and more advanced use cases.
+
 ```go
 	var csvInput = []byte(`
 name,age
@@ -44,6 +46,8 @@ john,27`,
 ```
 
 ### Marshal ###
+
+Marshal is using the std csv.Writer with its default options. Use [Encoder](https://godoc.org/github.com/jszwec/csvutil#Encoder) for streaming or to use a different Writer.
 
 ```go
 	type Address struct {
