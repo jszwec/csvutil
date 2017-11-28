@@ -5,7 +5,11 @@ csvutil [![GoDoc](https://godoc.org/github.com/jszwec/csvutil?status.svg)](http:
   <img style="float: right;" src="https://user-images.githubusercontent.com/3941256/33054906-52b4bc08-ce4a-11e7-9651-b70c5a47c921.png"/ width=200>
 </p>
 
-package csvutil provides fast and idiomatic mapping between CSV and Go values.
+Package csvutil provides fast and idiomatic mapping between CSV and Go values.
+
+This package does not provide a CSV parser itself, it is based on the Reader and Writer
+interfaces which are implemented by eg. std csv package. This gives a possibility
+of choosing any other CSV writer or reader which may be more performant.
 
 Installation
 ------------
