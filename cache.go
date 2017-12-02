@@ -38,12 +38,7 @@ func cachedFields(t reflect.Type, tagName string) fields {
 		return v.(fields)
 	}
 
-	f := buildFields(t, tagName)
-	if f == nil {
-		f = fields{}
-	}
-
-	v, _ := fieldCache.LoadOrStore(k, f)
+	v, _ := fieldCache.LoadOrStore(k, buildFields(t, tagName))
 	return v.(fields)
 }
 

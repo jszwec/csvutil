@@ -471,6 +471,15 @@ string,"{""key"":""value""}"
 			header:         []string{"String", "int"},
 		},
 		{
+			desc:           "empty struct",
+			in:             "String\n1",
+			out:            &struct{}{},
+			expected:       &struct{}{},
+			expectedRecord: []string{"1"},
+			header:         []string{"String"},
+			unused:         []int{0},
+		},
+		{
 			desc: "decode unmarshalers",
 			in:   "csv,pcsv,text,ptext,csv-text,pcsv-text\nfield,field,field,field,field,field",
 			out:  &Unmarshalers{},

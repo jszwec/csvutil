@@ -160,7 +160,7 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value, t reflect.Ty
 
 	decFields, ok := d.cache[k]
 	if !ok {
-		fields := cachedFields(t, d.tag())
+		fields := cachedFields(t, k.tag)
 
 		decFields = make([]decField, 0, len(fields))
 		for _, f := range fields {

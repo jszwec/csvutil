@@ -491,6 +491,13 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			desc: "empty struct",
+			in: []interface{}{
+				struct{}{},
+			},
+			out: [][]string{{}, {}},
+		},
+		{
 			desc: "csv marshaler error",
 			in: []interface{}{
 				struct {

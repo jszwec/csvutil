@@ -17,10 +17,10 @@ type encCache struct {
 	record []string
 }
 
-func (c *encCache) fields(k typeKey, tag string) ([]encField, error) {
+func (c *encCache) fields(k typeKey) ([]encField, error) {
 	encFields, ok := c.types[k]
 	if !ok {
-		fields := cachedFields(k.Type, tag)
+		fields := cachedFields(k.Type, k.tag)
 		encFields = make([]encField, len(fields))
 
 		for i, f := range fields {
@@ -143,7 +143,7 @@ func (e *Encoder) encode(v reflect.Value) error {
 
 	if e.noHeader {
 		k := typeKey{e.tag(), v.Type()}
-		fields, err := e.cache.fields(k, e.tag())
+		fields, err := e.cache.fields(k)
 		if err != nil {
 			return err
 		}
@@ -168,7 +168,7 @@ func (e *Encoder) encodeHeader(fields []encField) error {
 func (e *Encoder) marshal(v reflect.Value) error {
 	k := typeKey{e.tag(), v.Type()}
 
-	fields, err := e.cache.fields(k, e.tag())
+	fields, err := e.cache.fields(k)
 	if err != nil {
 		return err
 	}
