@@ -20,7 +20,7 @@ type encCache struct {
 func (c *encCache) fields(k typeKey) ([]encField, error) {
 	encFields, ok := c.types[k]
 	if !ok {
-		fields := cachedFields(k.Type, k.tag)
+		fields := cachedFields(k)
 		encFields = make([]encField, len(fields))
 
 		for i, f := range fields {

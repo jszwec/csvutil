@@ -32,13 +32,12 @@ type typeKey struct {
 
 var fieldCache sync.Map // map[typeKey][]field
 
-func cachedFields(t reflect.Type, tagName string) fields {
-	k := typeKey{tagName, t}
+func cachedFields(k typeKey) fields {
 	if v, ok := fieldCache.Load(k); ok {
 		return v.(fields)
 	}
 
-	v, _ := fieldCache.LoadOrStore(k, buildFields(t, tagName))
+	v, _ := fieldCache.LoadOrStore(k, buildFields(k))
 	return v.(fields)
 }
 
@@ -83,8 +82,8 @@ func (m fieldMap) fields() fields {
 	return out
 }
 
-func buildFields(typ reflect.Type, tagName string) fields {
-	q := fields{{typ: typ}}
+func buildFields(k typeKey) fields {
+	q := fields{{typ: k.Type}}
 	visited := make(map[reflect.Type]bool)
 	fm := make(fieldMap)
 
@@ -119,7 +118,7 @@ func buildFields(typ reflect.Type, tagName string) fields {
 				}
 			}
 
-			tag := parseTag(tagName, sf)
+			tag := parseTag(k.tag, sf)
 			if tag.ignore {
 				continue
 			}
