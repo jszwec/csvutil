@@ -18,10 +18,10 @@ func ExampleDecoder_decode() {
 		Age  int    `csv:"age"`
 	}
 
-	csvReader := csv.NewReader(strings.NewReader(
-		"id,name,age,city\n" +
-			",alice,25,la\n" +
-			",bob,30,ny\n"))
+	csvReader := csv.NewReader(strings.NewReader(`
+id,name,age,city
+,alice,25,la
+,bob,30,ny`))
 
 	dec, err := csvutil.NewDecoder(csvReader)
 	if err != nil {
@@ -53,10 +53,10 @@ func ExampleDecoder_decodeUnusedColumns() {
 		OtherData map[string]string `csv:"-"`
 	}
 
-	csvReader := csv.NewReader(strings.NewReader(
-		"name,age,city,phone\n" +
-			"alice,25,la,1234\n" +
-			"bob,30,ny,5678"))
+	csvReader := csv.NewReader(strings.NewReader(`
+name,age,city,zip
+alice,25,la,90005
+bob,30,ny,10005`))
 
 	dec, err := csvutil.NewDecoder(csvReader)
 	if err != nil {
@@ -66,8 +66,7 @@ func ExampleDecoder_decodeUnusedColumns() {
 	header := dec.Header()
 	var users []User
 	for {
-		var u User
-		u.OtherData = make(map[string]string)
+		u := User{OtherData: make(map[string]string)}
 
 		if err := dec.Decode(&u); err == io.EOF {
 			break
@@ -84,7 +83,7 @@ func ExampleDecoder_decodeUnusedColumns() {
 	fmt.Println(users)
 
 	// Output:
-	// [{alice la 25 map[phone:1234]} {bob ny 30 map[phone:5678]}]
+	// [{alice la 25 map[zip:90005]} {bob ny 30 map[zip:10005]}]
 }
 
 func ExampleDecoder_decodeEmbedded() {

@@ -7,7 +7,7 @@ csvutil [![GoDoc](https://godoc.org/github.com/jszwec/csvutil?status.svg)](http:
 
 Package csvutil provides fast and idiomatic mapping between CSV and Go values.
 
-This package does not provide a CSV parser itself, it is based on the Reader and Writer
+This package does not provide a CSV parser itself, it is based on the [Reader](https://godoc.org/github.com/jszwec/csvutil#Reader) and [Writer](https://godoc.org/github.com/jszwec/csvutil#Writer)
 interfaces which are implemented by eg. std csv package. This gives a possibility
 of choosing any other CSV writer or reader which may be more performant.
 
@@ -78,6 +78,56 @@ Marshal is using the std csv.Writer with its default options. Use [Encoder](http
 	// John,Boston,USA,26
 	// Bob,LA,USA,27
 	// Alice,SF,USA,
+```
+
+### Unmarshal and metadata ###
+
+It may happen that your CSV input will not always have the same header. In addition
+to your base fields you may get extra metadata that you would still like to store.
+[Decoder](https://godoc.org/github.com/jszwec/csvutil#Decoder) provides 
+[Unused](https://godoc.org/github.com/jszwec/csvutil#Decoder.Unused) method, which after each call to 
+[Decode](https://godoc.org/github.com/jszwec/csvutil#Decoder.Decode) can report which header indexes 
+were not used during decoding. Based on that, it is possible to handle and store all these extra values.
+
+```go
+	type User struct {
+		Name      string            `csv:"name"`
+		City      string            `csv:"city"`
+		Age       int               `csv:"age"`
+		OtherData map[string]string `csv:"-"`
+	}
+
+	csvReader := csv.NewReader(strings.NewReader(`
+name,age,city,zip
+alice,25,la,90005
+bob,30,ny,10005`))
+
+	dec, err := csvutil.NewDecoder(csvReader)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	header := dec.Header()
+	var users []User
+	for {
+		u := User{OtherData: make(map[string]string)}
+
+		if err := dec.Decode(&u); err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, i := range dec.Unused() {
+			u.OtherData[header[i]] = dec.Record()[i]
+		}
+		users = append(users, u)
+	}
+
+	fmt.Println(users)
+
+	// Output:
+	// [{alice la 25 map[zip:90005]} {bob ny 30 map[zip:10005]}]
 ```
 
 Performance

@@ -21,7 +21,8 @@ type Foo struct {
 }
 
 func ExampleDecoder_customUnmarshalCSV() {
-	var csvInput = []byte(`int,bar
+	var csvInput = []byte(`
+int,bar
 5,10
 6,11`)
 
