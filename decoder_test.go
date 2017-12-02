@@ -599,11 +599,30 @@ string,"{""key"":""value""}"
 			header:         []string{"Float"},
 		},
 		{
+			desc:           "empty base64 string",
+			in:             "Binary,foo\n,1\n",
+			out:            &struct{ Binary []byte }{},
+			expected:       &struct{ Binary []byte }{[]byte{}},
+			expectedRecord: []string{"", "1"},
+			header:         []string{"Binary", "foo"},
+			unused:         []int{1},
+		},
+		{
 			desc: "unsupported type",
 			in:   "string,int\ns,1",
 			out:  &TypeWithInvalidField{},
 			err: &UnsupportedTypeError{
 				Type: reflect.TypeOf(TypeI{}),
+			},
+		},
+		{
+			desc: "unsupported double ptr type",
+			in:   "A\n1",
+			out: &struct {
+				A **struct{}
+			}{},
+			err: &UnsupportedTypeError{
+				Type: reflect.TypeOf(struct{}{}),
 			},
 		},
 		{
@@ -665,6 +684,12 @@ string,"{""key"":""value""}"
 			in:   "string,int\n1,1",
 			out:  &Int,
 			err:  &InvalidDecodeError{Type: reflect.TypeOf(&Int)},
+		},
+		{
+			desc: "invalid base64 string",
+			in:   "Binary\n1",
+			out:  &struct{ Binary []byte }{},
+			err:  base64.CorruptInputError(0),
 		},
 	}
 

@@ -19,6 +19,12 @@ func (e *Embedded14) MarshalCSV() ([]byte, error) {
 	return json.Marshal(e)
 }
 
+type Embedded15 Embedded3
+
+func (e *Embedded15) MarshalText() ([]byte, error) {
+	return json.Marshal(Embedded3(*e))
+}
+
 type CSVMarshaler struct {
 	Err error
 }
@@ -192,7 +198,7 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
-			desc: "embedded non struct tagged types with pointer receiver Marshal",
+			desc: "embedded non struct tagged types with pointer receiver MarshalCSV",
 			in: []interface{}{
 				&struct {
 					Embedded14 `csv:"json"`
@@ -214,6 +220,38 @@ func TestEncoder(t *testing.T) {
 				}{
 					Embedded14: &Embedded14{"key": "val"},
 					A:          &Embedded14{"key1": "val1"},
+				},
+			},
+			out: [][]string{
+				{"json", "json2"},
+				{`{"key":"val"}`, `{"key1":"val1"}`},
+				{``, ``},
+				{`{"key":"val"}`, `{"key1":"val1"}`},
+			},
+		},
+		{
+			desc: "embedded non struct tagged types with pointer receiver MarshalText",
+			in: []interface{}{
+				&struct {
+					Embedded15 `csv:"json"`
+					A          Embedded15 `csv:"json2"`
+				}{
+					Embedded15: Embedded15{"key": "val"},
+					A:          Embedded15{"key1": "val1"},
+				},
+				struct {
+					Embedded15 `csv:"json"`
+					A          Embedded15 `csv:"json2"`
+				}{
+					Embedded15: Embedded15{"key": "val"},
+					A:          Embedded15{"key1": "val1"},
+				},
+				struct {
+					*Embedded15 `csv:"json"`
+					A           *Embedded15 `csv:"json2"`
+				}{
+					Embedded15: &Embedded15{"key": "val"},
+					A:          &Embedded15{"key1": "val1"},
 				},
 			},
 			out: [][]string{
@@ -478,6 +516,17 @@ func TestEncoder(t *testing.T) {
 			desc: "unsupported type",
 			in: []interface{}{
 				InvalidType{},
+			},
+			err: &UnsupportedTypeError{
+				Type: reflect.TypeOf(struct{}{}),
+			},
+		},
+		{
+			desc: "unsupported double pointer type",
+			in: []interface{}{
+				struct {
+					A **struct{}
+				}{},
 			},
 			err: &UnsupportedTypeError{
 				Type: reflect.TypeOf(struct{}{}),
