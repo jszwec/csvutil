@@ -805,6 +805,76 @@ string,"{""key"":""value""}"
 			t.Errorf("want err=%v; got %v", ErrFieldCount, err)
 		}
 	})
+
+	t.Run("decode different types", func(t *testing.T) {
+		data := []byte(`
+String,Int,Float,Bool
+s,1,3.14,true
+s,1,3.14,true
+s,1,3.14,true
+`)
+
+		type A struct {
+			String string
+			Foo    string
+		}
+
+		type B struct {
+			Int int
+			Foo int
+		}
+
+		type C struct {
+			Bool   bool
+			Float  float64
+			Int    int
+			String string
+			Foo    int
+		}
+
+		dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+		if err != nil {
+			t.Errorf("want err=nil; got %v", err)
+		}
+
+		fixtures := []struct {
+			out      interface{}
+			expected interface{}
+			unused   []int
+		}{
+			{
+				out:      &A{},
+				expected: &A{String: "s"},
+				unused:   []int{1, 2, 3},
+			},
+			{
+				out:      &B{},
+				expected: &B{Int: 1},
+				unused:   []int{0, 2, 3},
+			},
+			{
+				out: &C{},
+				expected: &C{
+					Bool:   true,
+					Float:  3.14,
+					Int:    1,
+					String: "s",
+				},
+			},
+		}
+
+		for _, f := range fixtures {
+			if err := dec.Decode(f.out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if !reflect.DeepEqual(f.out, f.expected) {
+				t.Errorf("want %v; got %v", f.expected, f.out)
+			}
+			if !reflect.DeepEqual(dec.Unused(), f.unused) {
+				t.Errorf("want %v; got %v", f.unused, dec.Unused())
+			}
+		}
+	})
 }
 
 func BenchmarkDecode(b *testing.B) {

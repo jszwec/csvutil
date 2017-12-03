@@ -491,6 +491,32 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			desc: "encode different types",
+			// This doesnt mean the output csv is valid. Generally this is an invalid
+			// use. However, we need to make sure that the encoder is doing what it is
+			// asked to... correctly.
+			in: []interface{}{
+				struct {
+					A int
+				}{},
+				struct {
+					A int
+					B string
+				}{},
+				struct {
+					A int
+				}{},
+				struct{}{},
+			},
+			out: [][]string{
+				{"A"},
+				{"0"},
+				{"0", ""},
+				{"0"},
+				{},
+			},
+		},
+		{
 			desc: "empty struct",
 			in: []interface{}{
 				struct{}{},

@@ -42,7 +42,7 @@ func (c *encCache) fields(k typeKey) ([]encField, error) {
 func (c *encCache) reset(fieldsLen int) {
 	c.buf.Reset()
 
-	if fieldsLen > len(c.index) {
+	if fieldsLen != len(c.index) {
 		c.index = make([]int, fieldsLen)
 		c.record = make([]string, fieldsLen)
 		return
@@ -50,8 +50,6 @@ func (c *encCache) reset(fieldsLen int) {
 
 	for i := range c.index {
 		c.index[i] = 0
-	}
-	for i := range c.record {
 		c.record[i] = ""
 	}
 }
