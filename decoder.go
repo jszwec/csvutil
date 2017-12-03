@@ -117,7 +117,8 @@ func (d *Decoder) Record() []string {
 	return d.record
 }
 
-// Header returns the first line that came from the reader.
+// Header returns the first line that came from the reader, or returns the
+// defined header by the caller.
 func (d *Decoder) Header() []string {
 	header := make([]string, len(d.header))
 	copy(header, d.header)
