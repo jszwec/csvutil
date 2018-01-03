@@ -141,32 +141,32 @@ benchmark code: https://gist.github.com/jszwec/e8515e741190454fa3494bcd3e1f100f
 
 csvutil:
 ```
-BenchmarkUnmarshal/csvutil.Unmarshal/1_record-8         	  200000	      9407 ns/op	    7408 B/op	      44 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/10_records-8       	  100000	     21384 ns/op	    8433 B/op	      53 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/100_records-8      	   10000	    140172 ns/op	   18609 B/op	     143 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/1000_records-8     	    1000	   1334816 ns/op	  121183 B/op	    1043 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/10000_records-8    	     100	  13203689 ns/op	 1140356 B/op	   10043 allocs/op
-BenchmarkUnmarshal/csvutil.Unmarshal/100000_records-8   	      10	 137474932 ns/op	12048059 B/op	  100044 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/1_record-8         	  200000	      6272 ns/op	    6908 B/op	      29 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/10_records-8       	  100000	     17388 ns/op	    7932 B/op	      38 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/100_records-8      	   10000	    130271 ns/op	   18109 B/op	     128 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/1000_records-8     	    1000	   1245386 ns/op	  120686 B/op	    1028 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/10000_records-8    	     100	  12595968 ns/op	 1139858 B/op	   10028 allocs/op
+BenchmarkUnmarshal/csvutil.Unmarshal/100000_records-8   	      10	 126051301 ns/op	12047544 B/op	  100029 allocs/op
 ```
 
 gocsv:
 ```
-BenchmarkUnmarshal/gocsv.Unmarshal/1_record-8           	  200000	     10613 ns/op	    7451 B/op	      94 allocs/op
-BenchmarkUnmarshal/gocsv.Unmarshal/10_records-8         	   50000	     36413 ns/op	   13547 B/op	     304 allocs/op
-BenchmarkUnmarshal/gocsv.Unmarshal/100_records-8        	    5000	    287672 ns/op	   72300 B/op	    2377 allocs/op
-BenchmarkUnmarshal/gocsv.Unmarshal/1000_records-8       	     500	   2756252 ns/op	  649932 B/op	   23080 allocs/op
-BenchmarkUnmarshal/gocsv.Unmarshal/10000_records-8      	      50	  29407701 ns/op	 7023391 B/op	  230089 allocs/op
-BenchmarkUnmarshal/gocsv.Unmarshal/100000_records-8     	       5	 311860368 ns/op	75482985 B/op	 2300102 allocs/op
+BenchmarkUnmarshal/gocsv.Unmarshal/1_record-8           	  100000	     11450 ns/op	    7707 B/op	      94 allocs/op
+BenchmarkUnmarshal/gocsv.Unmarshal/10_records-8         	   50000	     35563 ns/op	   13803 B/op	     304 allocs/op
+BenchmarkUnmarshal/gocsv.Unmarshal/100_records-8        	    5000	    273460 ns/op	   72556 B/op	    2377 allocs/op
+BenchmarkUnmarshal/gocsv.Unmarshal/1000_records-8       	     500	   2637949 ns/op	  650192 B/op	   23080 allocs/op
+BenchmarkUnmarshal/gocsv.Unmarshal/10000_records-8      	      50	  28142811 ns/op	 7023653 B/op	  230089 allocs/op
+BenchmarkUnmarshal/gocsv.Unmarshal/100000_records-8     	       5	 300706153 ns/op	75483254 B/op	 2300102 allocs/op
 ```
 
 easycsv:
 ```
-BenchmarkUnmarshal/easycsv.ReadAll/1_record-8           	  100000	     15636 ns/op	    8863 B/op	      78 allocs/op
-BenchmarkUnmarshal/easycsv.ReadAll/10_records-8         	   20000	     76797 ns/op	   24080 B/op	     388 allocs/op
-BenchmarkUnmarshal/easycsv.ReadAll/100_records-8        	    2000	    666465 ns/op	  170548 B/op	    3451 allocs/op
-BenchmarkUnmarshal/easycsv.ReadAll/1000_records-8       	     200	   6431414 ns/op	 1595751 B/op	   34054 allocs/op
-BenchmarkUnmarshal/easycsv.ReadAll/10000_records-8      	      20	  70387764 ns/op	18870418 B/op	  340065 allocs/op
-BenchmarkUnmarshal/easycsv.ReadAll/100000_records-8     	       2	 737079728 ns/op	190822472 B/op	 3400081 allocs/op
+BenchmarkUnmarshal/easycsv.ReadAll/1_record-8           	  100000	     14857 ns/op	    8863 B/op	      78 allocs/op
+BenchmarkUnmarshal/easycsv.ReadAll/10_records-8         	   20000	     71743 ns/op	   24079 B/op	     388 allocs/op
+BenchmarkUnmarshal/easycsv.ReadAll/100_records-8        	    2000	    640717 ns/op	  170546 B/op	    3451 allocs/op
+BenchmarkUnmarshal/easycsv.ReadAll/1000_records-8       	     200	   6038652 ns/op	 1595752 B/op	   34054 allocs/op
+BenchmarkUnmarshal/easycsv.ReadAll/10000_records-8      	      20	  66219522 ns/op	18870420 B/op	  340065 allocs/op
+BenchmarkUnmarshal/easycsv.ReadAll/100000_records-8     	       2	 702731667 ns/op	190822472 B/op	 3400081 allocs/op
 ```
 
 ### Marshal ###

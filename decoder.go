@@ -16,12 +16,13 @@ type Decoder struct {
 	// options (Default: 'csv').
 	Tag string
 
-	r      Reader
-	header []string
-	record []string
-	cache  map[typeKey][]decField
-	hmap   map[string]int
-	used   []bool
+	r       Reader
+	header  []string
+	record  []string
+	typeKey typeKey
+	cache   []decField
+	hmap    map[string]int
+	used    []bool
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -51,7 +52,6 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 		r:      r,
 		header: header,
 		hmap:   m,
-		cache:  make(map[typeKey][]decField),
 		used:   make([]bool, len(header)),
 	}, nil
 }
@@ -143,27 +143,22 @@ func (d *Decoder) unmarshal(record []string, v interface{}) error {
 	}
 
 	elem := indirect(vv.Elem())
-	typ := elem.Type()
-
-	if typ.Kind() != reflect.Struct {
+	if typ := elem.Type(); typ.Kind() != reflect.Struct {
 		return &InvalidDecodeError{Type: reflect.PtrTo(typ)}
 	}
 
-	for i := range d.used {
-		d.used[i] = false
-	}
-
-	return d.unmarshalStruct(record, elem, typ, d.used)
+	return d.unmarshalStruct(record, elem)
 }
 
-func (d *Decoder) unmarshalStruct(record []string, v reflect.Value, t reflect.Type, used []bool) error {
-	k := typeKey{d.tag(), t}
+func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
+	if k := (typeKey{d.tag(), v.Type()}); d.typeKey != k {
+		for i := range d.used {
+			d.used[i] = false
+		}
 
-	decFields, ok := d.cache[k]
-	if !ok {
 		fields := cachedFields(k)
 
-		decFields = make([]decField, 0, len(fields))
+		decFields := make([]decField, 0, len(fields))
 		for _, f := range fields {
 			i, ok := d.hmap[f.tag.name]
 			if !ok {
@@ -180,13 +175,14 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value, t reflect.Ty
 				field:       f,
 				decodeFunc:  fn,
 			})
+
+			d.used[i] = true
 		}
 
-		d.cache[k] = decFields
+		d.cache, d.typeKey = decFields, k
 	}
 
-	for _, f := range decFields {
-		used[f.columnIndex] = true
+	for _, f := range d.cache {
 		if f.tag.omitEmpty && record[f.columnIndex] == "" {
 			continue
 		}
