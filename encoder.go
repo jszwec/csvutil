@@ -11,17 +11,17 @@ type encField struct {
 }
 
 type encCache struct {
-	types  map[typeKey][]encField
-	buf    bytes.Buffer
-	index  []int
-	record []string
+	typeKey typeKey
+	buf     bytes.Buffer
+	cache   []encField
+	index   []int
+	record  []string
 }
 
 func (c *encCache) fields(k typeKey) ([]encField, error) {
-	encFields, ok := c.types[k]
-	if !ok {
+	if c.typeKey != k {
 		fields := cachedFields(k)
-		encFields = make([]encField, len(fields))
+		encFields := make([]encField, len(fields))
 
 		for i, f := range fields {
 			fn, err := encodeFn(f.typ)
@@ -34,9 +34,9 @@ func (c *encCache) fields(k typeKey) ([]encField, error) {
 				encodeFunc: fn,
 			}
 		}
-		c.types[k] = encFields
+		c.cache, c.typeKey = encFields, k
 	}
-	return encFields, nil
+	return c.cache, nil
 }
 
 func (c *encCache) reset(fieldsLen int) {
@@ -70,12 +70,11 @@ func NewEncoder(w Writer) *Encoder {
 	return &Encoder{
 		w:        w,
 		noHeader: true,
-		cache:    encCache{types: make(map[typeKey][]encField)},
 	}
 }
 
 // Encode writes the CSV encoding of v to the output stream. The provided
-// argument v must be a struct.
+// argument v must be a non-nil struct.
 //
 // Only the exported fields will be encoded.
 //
@@ -134,7 +133,12 @@ func (e *Encoder) Encode(v interface{}) error {
 }
 
 func (e *Encoder) encode(v reflect.Value) error {
-	v = indirect(v)
+	v = walkValue(v)
+
+	if !v.IsValid() {
+		return &InvalidEncodeError{}
+	}
+
 	if v.Kind() != reflect.Struct {
 		return &InvalidEncodeError{v.Type()}
 	}
@@ -175,8 +179,8 @@ func (e *Encoder) marshal(v reflect.Value) error {
 	buf, index, record := &e.cache.buf, e.cache.index, e.cache.record
 
 	for i, f := range fields {
-		v, ok := walkIndex(v, f.index)
-		if !ok {
+		v := walkIndex(v, f.index)
+		if !v.IsValid() {
 			continue
 		}
 
@@ -202,17 +206,16 @@ func (e *Encoder) tag() string {
 	return e.Tag
 }
 
-func walkIndex(v reflect.Value, index []int) (reflect.Value, bool) {
+func walkIndex(v reflect.Value, index []int) reflect.Value {
 	for _, i := range index {
 		v = walkPtr(v)
 		if !v.IsValid() {
-			return reflect.Value{}, false
+			return reflect.Value{}
 		}
 		v = v.Field(i)
 	}
 
-	v = walkPtr(v)
-	return v, v.IsValid()
+	return walkPtr(v)
 }
 
 func walkPtr(v reflect.Value) reflect.Value {
@@ -220,4 +223,15 @@ func walkPtr(v reflect.Value) reflect.Value {
 		v = v.Elem()
 	}
 	return v
+}
+
+func walkValue(v reflect.Value) reflect.Value {
+	for {
+		switch v.Kind() {
+		case reflect.Ptr, reflect.Interface:
+			v = v.Elem()
+		default:
+			return v
+		}
+	}
 }

@@ -11,6 +11,12 @@ import (
 
 var Error = errors.New("error")
 
+var nilIface interface{}
+
+var nilPtr *TypeF
+
+var nilIfacePtr interface{} = nilPtr
+
 type embeddedMap map[string]string
 
 type Embedded14 Embedded3
@@ -524,6 +530,13 @@ func TestEncoder(t *testing.T) {
 			out: [][]string{{}, {}},
 		},
 		{
+			desc: "value wrapped in interfaces and pointers",
+			in: []interface{}{
+				func() (v interface{}) { v = &struct{ A int }{5}; return v }(),
+			},
+			out: [][]string{{"A"}, {"5"}},
+		},
+		{
 			desc: "csv marshaler error",
 			in: []interface{}{
 				struct {
@@ -580,6 +593,23 @@ func TestEncoder(t *testing.T) {
 			err: &InvalidEncodeError{
 				Type: reflect.TypeOf(int(1)),
 			},
+		},
+		{
+			desc: "encode nil interface",
+			in:   []interface{}{nilIface},
+			err: &InvalidEncodeError{
+				Type: reflect.TypeOf(nilIface),
+			},
+		},
+		{
+			desc: "encode nil ptr",
+			in:   []interface{}{nilPtr},
+			err:  &InvalidEncodeError{},
+		},
+		{
+			desc: "encode nil interface pointer",
+			in:   []interface{}{nilIfacePtr},
+			err:  &InvalidEncodeError{},
 		},
 	}
 
@@ -668,6 +698,16 @@ func TestEncoder(t *testing.T) {
 				desc:     "invalid encode error message",
 				expected: "csvutil: Encode(int64)",
 				v:        int64(1),
+			},
+			{
+				desc:     "invalid encode error message with nil interface",
+				expected: "csvutil: Encode(nil)",
+				v:        nilIface,
+			},
+			{
+				desc:     "invalid encode error message with nil value",
+				expected: "csvutil: Encode(nil)",
+				v:        nilPtr,
 			},
 			{
 				desc:     "unsupported type error message",

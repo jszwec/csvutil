@@ -72,7 +72,12 @@ func Unmarshal(data []byte, v interface{}) error {
 //
 // For the exact encoding rules look at Encoder.Encode method.
 func Marshal(v interface{}) ([]byte, error) {
-	val := walkPtr(reflect.ValueOf(v))
+	val := walkValue(reflect.ValueOf(v))
+
+	if !val.IsValid() {
+		return nil, &InvalidMarshalError{}
+	}
+
 	if val.Kind() != reflect.Slice {
 		return nil, &InvalidMarshalError{Type: val.Type()}
 	}

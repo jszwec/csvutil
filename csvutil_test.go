@@ -250,6 +250,19 @@ func TestMarshal(t *testing.T) {
 			},
 		},
 		{
+			desc: "slice pointer wrapped in interface",
+			v: func() (v interface{}) {
+				v = &[]*TypeI{
+					{String: "string", Int: 10},
+				}
+				return v
+			}(),
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+			},
+		},
+		{
 			desc: "not a slice",
 			v:    int64(1),
 			err:  &InvalidMarshalError{Type: reflect.TypeOf(int64(1))},
@@ -258,6 +271,21 @@ func TestMarshal(t *testing.T) {
 			desc: "slice of non pointers",
 			v:    []int64{1},
 			err:  &InvalidEncodeError{Type: reflect.TypeOf(int64(1))},
+		},
+		{
+			desc: "nil value",
+			v:    nilIface,
+			err:  &InvalidMarshalError{Type: reflect.TypeOf(nilIface)},
+		},
+		{
+			desc: "nil ptr value",
+			v:    nilPtr,
+			err:  &InvalidMarshalError{},
+		},
+		{
+			desc: "nil interface ptr value",
+			v:    nilIfacePtr,
+			err:  &InvalidMarshalError{},
 		},
 	}
 
@@ -280,13 +308,43 @@ func TestMarshal(t *testing.T) {
 	}
 
 	t.Run("invalid marshal error message", func(t *testing.T) {
-		expected := "csvutil: Marshal(non-slice int64)"
-		_, err := Marshal(int64(1))
-		if err == nil {
-			t.Fatal("want err not to be nil")
+		fixtures := []struct {
+			desc     string
+			expected string
+			v        interface{}
+		}{
+			{
+				desc:     "int64",
+				expected: "csvutil: Marshal(non-slice int64)",
+				v:        int64(1),
+			},
+			{
+				desc:     "nil interface",
+				expected: "csvutil: Marshal(nil)",
+				v:        nilIface,
+			},
+			{
+				desc:     "nil ptr value",
+				expected: "csvutil: Marshal(nil)",
+				v:        nilPtr,
+			},
+			{
+				desc:     "nil interface ptr value",
+				expected: "csvutil: Marshal(nil)",
+				v:        nilIfacePtr,
+			},
 		}
-		if err.Error() != expected {
-			t.Errorf("want=%s; got %s", expected, err.Error())
+
+		for _, f := range fixtures {
+			t.Run(f.desc, func(t *testing.T) {
+				_, err := Marshal(f.v)
+				if err == nil {
+					t.Fatal("want err not to be nil")
+				}
+				if err.Error() != f.expected {
+					t.Errorf("want=%s; got %s", f.expected, err.Error())
+				}
+			})
 		}
 	})
 

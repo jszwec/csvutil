@@ -77,6 +77,9 @@ type InvalidEncodeError struct {
 }
 
 func (e *InvalidEncodeError) Error() string {
+	if e.Type == nil {
+		return "csvutil: Encode(nil)"
+	}
 	return "csvutil: Encode(" + e.Type.String() + ")"
 }
 
@@ -87,6 +90,9 @@ type InvalidMarshalError struct {
 }
 
 func (e *InvalidMarshalError) Error() string {
+	if e.Type == nil {
+		return "csvutil: Marshal(nil)"
+	}
 	return "csvutil: Marshal(non-slice " + e.Type.String() + ")"
 }
 
