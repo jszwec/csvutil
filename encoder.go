@@ -91,7 +91,7 @@ func NewEncoder(w Writer) *Encoder {
 //
 // Tagged fields have the priority over non tagged fields with the same name.
 //
-// Following the Go vibility rules if there are multiple fields with the same
+// Following the Go visibility rules if there are multiple fields with the same
 // name (tagged or not tagged) on the same level and choice between them is
 // ambiguous, then all these fields will be ignored.
 //

@@ -27,6 +27,9 @@ type UnsupportedTypeError struct {
 }
 
 func (e *UnsupportedTypeError) Error() string {
+	if e.Type == nil {
+		return "csvutil: unsupported type: nil"
+	}
 	return "csvutil: unsupported type: " + e.Type.String()
 }
 

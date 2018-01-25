@@ -360,3 +360,218 @@ func TestMarshal(t *testing.T) {
 	})
 
 }
+
+type TypeJ struct {
+	String string `csv:"STR" json:"string"`
+	Int    string `csv:"int" json:"-"`
+	Embedded16
+	Float string `csv:"float"`
+}
+
+type Embedded16 struct {
+	Bool  bool  `json:"bool"`
+	Uint  uint  `csv:"-"`
+	Uint8 uint8 `json:"-"`
+}
+
+func TestHeader(t *testing.T) {
+	fixture := []struct {
+		desc   string
+		v      interface{}
+		tag    string
+		header []string
+		err    error
+	}{
+		{
+			desc:   "simple type with default tag",
+			v:      TypeG{},
+			tag:    "",
+			header: []string{"String", "Int"},
+		},
+		{
+			desc:   "simple type",
+			v:      TypeG{},
+			tag:    "csv",
+			header: []string{"String", "Int"},
+		},
+		{
+			desc:   "simple type with ptr value",
+			v:      &TypeG{},
+			tag:    "csv",
+			header: []string{"String", "Int"},
+		},
+		{
+			desc:   "embedded types with conflict",
+			v:      &TypeA{},
+			tag:    "csv",
+			header: []string{"string", "bool", "int"},
+		},
+		{
+			desc:   "embedded type with tag",
+			v:      &TypeB{},
+			tag:    "csv",
+			header: []string{"json", "string"},
+		},
+		{
+			desc:   "embedded ptr type with tag",
+			v:      &TypeD{},
+			tag:    "csv",
+			header: []string{"json", "string"},
+		},
+		{
+			desc:   "embedded ptr type no tag",
+			v:      &TypeC{},
+			tag:    "csv",
+			header: []string{"float", "string"},
+		},
+		{
+			desc:   "type with omitempty tags",
+			v:      TypeI{},
+			tag:    "csv",
+			header: []string{"String", "int"},
+		},
+		{
+			desc:   "embedded with different json tag",
+			v:      TypeJ{},
+			tag:    "json",
+			header: []string{"string", "bool", "Uint", "Float"},
+		},
+		{
+			desc:   "embedded with default csv tag",
+			v:      TypeJ{},
+			tag:    "csv",
+			header: []string{"STR", "int", "Bool", "Uint8", "float"},
+		},
+		{
+			desc: "not a struct",
+			v:    int(10),
+			tag:  "csv",
+			err:  &UnsupportedTypeError{Type: reflect.TypeOf(int(0))},
+		},
+		{
+			desc: "slice",
+			v:    []TypeJ{{}},
+			tag:  "csv",
+			err:  &UnsupportedTypeError{Type: reflect.TypeOf([]TypeJ{})},
+		},
+		{
+			desc: "nil interface",
+			v:    nilIface,
+			tag:  "csv",
+			err:  &UnsupportedTypeError{},
+		},
+		{
+			desc:   "circular reference type",
+			v:      &A{},
+			tag:    "csv",
+			header: []string{"Y", "X"},
+		},
+		{
+			desc:   "conflicting fields",
+			v:      &Embedded10{},
+			tag:    "csv",
+			header: []string{"Y"},
+		},
+		{
+			desc: "nil ptr of TypeF",
+			v:    nilPtr,
+			tag:  "csv",
+			header: []string{"int",
+				"pint",
+				"int8",
+				"pint8",
+				"int16",
+				"pint16",
+				"int32",
+				"pint32",
+				"int64",
+				"pint64",
+				"uint",
+				"puint",
+				"uint8",
+				"puint8",
+				"uint16",
+				"puint16",
+				"uint32",
+				"puint32",
+				"uint64",
+				"puint64",
+				"float32",
+				"pfloat32",
+				"float64",
+				"pfloat64",
+				"string",
+				"pstring",
+				"bool",
+				"pbool",
+				"interface",
+				"pinterface",
+				"binary",
+				"pbinary",
+			},
+		},
+		{
+			desc: "nil interface ptr of TypeF",
+			v:    nilIfacePtr,
+			tag:  "csv",
+			header: []string{"int",
+				"pint",
+				"int8",
+				"pint8",
+				"int16",
+				"pint16",
+				"int32",
+				"pint32",
+				"int64",
+				"pint64",
+				"uint",
+				"puint",
+				"uint8",
+				"puint8",
+				"uint16",
+				"puint16",
+				"uint32",
+				"puint32",
+				"uint64",
+				"puint64",
+				"float32",
+				"pfloat32",
+				"float64",
+				"pfloat64",
+				"string",
+				"pstring",
+				"bool",
+				"pbool",
+				"interface",
+				"pinterface",
+				"binary",
+				"pbinary",
+			},
+		},
+	}
+
+	for _, f := range fixture {
+		t.Run(f.desc, func(t *testing.T) {
+			h, err := Header(f.v, f.tag)
+
+			if !reflect.DeepEqual(err, f.err) {
+				t.Errorf("want err=%v; got %v", f.err, err)
+			}
+
+			if !reflect.DeepEqual(h, f.header) {
+				t.Errorf("want header=%v; got %v", f.header, h)
+			}
+		})
+	}
+
+	t.Run("test nil value error message", func(t *testing.T) {
+		const expected = "csvutil: unsupported type: nil"
+		h, err := Header(nilIface, "")
+		if h != nil {
+			t.Errorf("want h=nil; got %v", h)
+		}
+		if err.Error() != expected {
+			t.Errorf("want err=%s; got %s", expected, err.Error())
+		}
+	})
+}

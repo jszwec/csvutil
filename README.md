@@ -130,6 +130,52 @@ bob,30,ny,10005`))
 	// [{alice la 25 map[zip:90005]} {bob ny 30 map[zip:10005]}]
 ```
 
+### But my CSV file has no header... ###
+
+Some CSV files have no header, but if you know how it should look like, it is
+possible to define a struct and generate it. All that is left to do, is to pass
+it to a decoder.
+
+```go
+	type User struct {
+		ID   int
+		Name string
+		Age  int `csv:",omitempty"`
+		City string
+	}
+
+	csvReader := csv.NewReader(strings.NewReader(`
+1,John,27,la
+2,Bob,,ny`))
+
+	// in real application this should be done once in init function.
+	userHeader, err := csvutil.Header(User{}, "csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dec, err := csvutil.NewDecoder(csvReader, userHeader...)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var users []User
+	for {
+		var u User
+		if err := dec.Decode(&u); err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
+		users = append(users, u)
+	}
+
+	fmt.Printf("%+v", users)
+
+	// Output:
+	// [{ID:1 Name:John Age:27 City:la} {ID:2 Name:Bob Age:0 City:ny}]
+```
+
 Performance
 ------------
 

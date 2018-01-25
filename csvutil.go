@@ -132,3 +132,53 @@ func newCSVReader(r io.Reader) *csv.Reader {
 	rr.ReuseRecord = true
 	return rr
 }
+
+// Header scans the provided struct type and generates a CSV header for it.
+//
+// Field names are written in the same order as struct fields are defined.
+// Embedded struct's fields are treated as if they were part of the outer struct.
+// Fields that are embedded types and that are tagged are treated like any
+// other field.
+//
+// Unexported fields and fields with tag "-" are ignored.
+//
+// Tagged fields have the priority over non tagged fields with the same name.
+//
+// Following the Go visibility rules if there are multiple fields with the same
+// name (tagged or not tagged) on the same level and choice between them is
+// ambiguous, then all these fields will be ignored.
+//
+// It is a good practice to call Header once for each type. The suitable place
+// for calling it is init function. Look at Decoder.DecodingDataWithNoHeader
+// example.
+//
+// If tag is left empty the default "csv" will be used.
+//
+// Header will return UnsupportedTypeError if the provided value is nil or is
+// not a struct.
+func Header(v interface{}, tag string) ([]string, error) {
+	val := reflect.ValueOf(v)
+	if !val.IsValid() {
+		return nil, &UnsupportedTypeError{}
+	}
+
+	typ := val.Type()
+	for typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return nil, &UnsupportedTypeError{Type: typ}
+	}
+
+	if tag == "" {
+		tag = defaultTag
+	}
+
+	fields := cachedFields(typeKey{tag, typ})
+	h := make([]string, len(fields))
+	for i, f := range fields {
+		h[i] = f.tag.name
+	}
+	return h, nil
+}
