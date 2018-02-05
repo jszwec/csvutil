@@ -78,8 +78,9 @@ func NewEncoder(w Writer) *Encoder {
 //
 // Only the exported fields will be encoded.
 //
-// First call to Encode will write a header. Header names can be customized by
-// using tags ('csv' by default), otherwise original Field names are used.
+// First call to Encode will write a header unless EncodeHeader was called first.
+// Header names can be customized by using tags ('csv' by default), otherwise
+// original Field names are used.
 //
 // Header and fields are written in the same order as struct fields are defined.
 // Embedded struct's fields are treated as if they were part of the outer struct.
@@ -132,6 +133,34 @@ func (e *Encoder) Encode(v interface{}) error {
 	return e.encode(reflect.ValueOf(v))
 }
 
+// EncodeHeader writes the CSV header of the provided struct value to the output
+// stream. The provided argument v must be a struct value.
+//
+// The first Encode method call will not write header if EncodeHeader was called
+// before it. This method can be called in cases when a data set could be
+// empty, but header is desired.
+//
+// EncodeHeader is like Header function, but it works with the Encoder and writes
+// directly to the output stream. Look at Header documentation for the exact
+// header encoding rules.
+func (e *Encoder) EncodeHeader(v interface{}) error {
+	val := reflect.ValueOf(v)
+	if !val.IsValid() {
+		return &UnsupportedTypeError{}
+	}
+
+	typ := val.Type()
+	for typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return &UnsupportedTypeError{Type: typ}
+	}
+
+	return e.encodeHeader(typ)
+}
+
 func (e *Encoder) encode(v reflect.Value) error {
 	v = walkValue(v)
 
@@ -144,22 +173,26 @@ func (e *Encoder) encode(v reflect.Value) error {
 	}
 
 	if e.noHeader {
-		k := typeKey{e.tag(), v.Type()}
-		fields, err := e.cache.fields(k)
-		if err != nil {
+		if err := e.encodeHeader(v.Type()); err != nil {
 			return err
 		}
-
-		if err := e.encodeHeader(fields); err != nil {
-			return err
-		}
-		e.noHeader = false
 	}
 
 	return e.marshal(v)
 }
 
-func (e *Encoder) encodeHeader(fields []encField) error {
+func (e *Encoder) encodeHeader(typ reflect.Type) (err error) {
+	defer func() {
+		if err == nil {
+			e.noHeader = false
+		}
+	}()
+
+	fields, err := e.fields(typ)
+	if err != nil {
+		return err
+	}
+
 	e.cache.reset(len(fields))
 	for i, f := range fields {
 		e.cache.record[i] = f.tag.name
@@ -168,9 +201,7 @@ func (e *Encoder) encodeHeader(fields []encField) error {
 }
 
 func (e *Encoder) marshal(v reflect.Value) error {
-	k := typeKey{e.tag(), v.Type()}
-
-	fields, err := e.cache.fields(k)
+	fields, err := e.fields(v.Type())
 	if err != nil {
 		return err
 	}
@@ -204,6 +235,10 @@ func (e *Encoder) tag() string {
 		return defaultTag
 	}
 	return e.Tag
+}
+
+func (e *Encoder) fields(typ reflect.Type) ([]encField, error) {
+	return e.cache.fields(typeKey{e.tag(), typ})
 }
 
 func walkIndex(v reflect.Value, index []int) reflect.Value {

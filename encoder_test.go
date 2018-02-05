@@ -733,6 +733,198 @@ func TestEncoder(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("EncodeHeader", func(t *testing.T) {
+		t.Run("no double header with encode", func(t *testing.T) {
+			var buf bytes.Buffer
+			w := csv.NewWriter(&buf)
+			enc := NewEncoder(w)
+			if err := enc.EncodeHeader(TypeI{}); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if err := enc.Encode(TypeI{}); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			w.Flush()
+
+			expected := encodeCSV(t, [][]string{
+				{"String", "int"},
+				{"", ""},
+			})
+
+			if buf.String() != expected {
+				t.Errorf("want out=%s; got %s", expected, buf.String())
+			}
+		})
+
+		t.Run("encode writes header if EncodeHeader fails", func(t *testing.T) {
+			var buf bytes.Buffer
+			w := csv.NewWriter(&buf)
+			enc := NewEncoder(w)
+
+			if err := enc.EncodeHeader(InvalidType{}); err == nil {
+				t.Errorf("expected not nil error")
+			}
+
+			if err := enc.Encode(TypeI{}); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+
+			w.Flush()
+
+			expected := encodeCSV(t, [][]string{
+				{"String", "int"},
+				{"", ""},
+			})
+
+			if buf.String() != expected {
+				t.Errorf("want out=%s; got %s", expected, buf.String())
+			}
+		})
+
+		fixtures := []struct {
+			desc string
+			in   interface{}
+			tag  string
+			out  [][]string
+			err  error
+		}{
+			{
+				desc: "conflicting fields",
+				in:   &Embedded10{},
+				out: [][]string{
+					{"Y"},
+				},
+			},
+			{
+				desc: "custom tag",
+				in:   TypeJ{},
+				tag:  "json",
+				out: [][]string{
+					{"string", "bool", "Uint", "Float"},
+				},
+			},
+			{
+				desc: "nil interface ptr value",
+				in:   nilIfacePtr,
+				out: [][]string{
+					{
+						"int",
+						"pint",
+						"int8",
+						"pint8",
+						"int16",
+						"pint16",
+						"int32",
+						"pint32",
+						"int64",
+						"pint64",
+						"uint",
+						"puint",
+						"uint8",
+						"puint8",
+						"uint16",
+						"puint16",
+						"uint32",
+						"puint32",
+						"uint64",
+						"puint64",
+						"float32",
+						"pfloat32",
+						"float64",
+						"pfloat64",
+						"string",
+						"pstring",
+						"bool",
+						"pbool",
+						"interface",
+						"pinterface",
+						"binary",
+						"pbinary",
+					},
+				},
+			},
+			{
+				desc: "nil ptr value",
+				in:   nilPtr,
+				out: [][]string{
+					{
+						"int",
+						"pint",
+						"int8",
+						"pint8",
+						"int16",
+						"pint16",
+						"int32",
+						"pint32",
+						"int64",
+						"pint64",
+						"uint",
+						"puint",
+						"uint8",
+						"puint8",
+						"uint16",
+						"puint16",
+						"uint32",
+						"puint32",
+						"uint64",
+						"puint64",
+						"float32",
+						"pfloat32",
+						"float64",
+						"pfloat64",
+						"string",
+						"pstring",
+						"bool",
+						"pbool",
+						"interface",
+						"pinterface",
+						"binary",
+						"pbinary",
+					},
+				},
+			},
+			{
+				desc: "nil value",
+				err:  &UnsupportedTypeError{},
+			},
+			{
+				desc: "ptr - not a struct",
+				in:   &[]int{},
+				err:  &UnsupportedTypeError{Type: reflect.TypeOf([]int{})},
+			},
+			{
+				desc: "not a struct",
+				in:   int(1),
+				err:  &UnsupportedTypeError{Type: reflect.TypeOf(int(0))},
+			},
+		}
+
+		for _, f := range fixtures {
+			t.Run(f.desc, func(t *testing.T) {
+				var buf bytes.Buffer
+				w := csv.NewWriter(&buf)
+
+				enc := NewEncoder(w)
+				enc.Tag = f.tag
+
+				err := enc.EncodeHeader(f.in)
+				w.Flush()
+
+				if !reflect.DeepEqual(err, f.err) {
+					t.Errorf("want err=%v; got %v", f.err, err)
+				}
+
+				if f.err != nil {
+					return
+				}
+
+				if expected := encodeCSV(t, f.out); buf.String() != expected {
+					t.Errorf("want out=%s; got %s", expected, buf.String())
+				}
+			})
+		}
+	})
 }
 
 func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {

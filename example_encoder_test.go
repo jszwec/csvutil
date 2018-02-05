@@ -49,3 +49,28 @@ func ExampleEncoder_encode() {
 	// Bob,LA,USA,27
 	// Alice,SF,USA,
 }
+
+func ExampleEncoder_encodeHeader() {
+	type User struct {
+		Name string
+		Age  int `csv:"age,omitempty"`
+	}
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	enc := csvutil.NewEncoder(w)
+
+	if err := enc.EncodeHeader(User{}); err != nil {
+		fmt.Println("error:", err)
+	}
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		fmt.Println("error:", err)
+	}
+
+	fmt.Println(buf.String())
+
+	// Output:
+	// Name,age
+}
