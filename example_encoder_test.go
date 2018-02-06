@@ -8,7 +8,7 @@ import (
 	"github.com/jszwec/csvutil"
 )
 
-func ExampleEncoder_encode() {
+func ExampleEncoder_Encode() {
 	type Address struct {
 		City    string
 		Country string
@@ -50,7 +50,7 @@ func ExampleEncoder_encode() {
 	// Alice,SF,USA,
 }
 
-func ExampleEncoder_encodeHeader() {
+func ExampleEncoder_EncodeHeader() {
 	type User struct {
 		Name string
 		Age  int `csv:"age,omitempty"`

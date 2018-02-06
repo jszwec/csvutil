@@ -10,7 +10,7 @@ import (
 	"github.com/jszwec/csvutil"
 )
 
-func ExampleDecoder_decode() {
+func ExampleDecoder_Decode() {
 	type User struct {
 		ID   *int   `csv:"id,omitempty"`
 		Name string `csv:"name"`
@@ -45,7 +45,7 @@ id,name,age,city
 	// [{<nil> alice la 25} {<nil> bob ny 30}]
 }
 
-func ExampleDecoder_decodeUnusedColumns() {
+func ExampleDecoder_Unused() {
 	type User struct {
 		Name      string            `csv:"name"`
 		City      string            `csv:"city"`

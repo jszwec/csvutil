@@ -6,7 +6,7 @@ import (
 	"github.com/jszwec/csvutil"
 )
 
-func ExampleDecoder_unmarshal() {
+func ExampleUnmarshal() {
 	var csvInput = []byte(`
 name,age
 jacek,26
