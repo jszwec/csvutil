@@ -270,7 +270,7 @@ func TestMarshal(t *testing.T) {
 		{
 			desc: "slice of non pointers",
 			v:    []int64{1},
-			err:  &InvalidEncodeError{Type: reflect.TypeOf(int64(1))},
+			err:  &InvalidMarshalError{Type: reflect.TypeOf([]int64{})},
 		},
 		{
 			desc: "nil value",
@@ -286,6 +286,25 @@ func TestMarshal(t *testing.T) {
 			desc: "nil interface ptr value",
 			v:    nilIfacePtr,
 			err:  &InvalidMarshalError{},
+		},
+		{
+			desc: "marshal empty slice",
+			v:    []TypeI{},
+			out: [][]string{
+				{"String", "int"},
+			},
+		},
+		{
+			desc: "marshal nil slice",
+			v:    []TypeI(nil),
+			out: [][]string{
+				{"String", "int"},
+			},
+		},
+		{
+			desc: "marshal invalid struct type",
+			v:    []InvalidType(nil),
+			err:  &UnsupportedTypeError{Type: reflect.TypeOf(struct{}{})},
 		},
 	}
 
@@ -317,6 +336,11 @@ func TestMarshal(t *testing.T) {
 				desc:     "int64",
 				expected: "csvutil: Marshal(non-slice int64)",
 				v:        int64(1),
+			},
+			{
+				desc:     "[]int64",
+				expected: "csvutil: Marshal(non struct slice []int64)",
+				v:        []int64{},
 			},
 			{
 				desc:     "nil interface",

@@ -63,12 +63,13 @@ func Unmarshal(data []byte, v interface{}) error {
 	return nil
 }
 
-// Marshal returns the CSV encoding of slice v. If v is not a slice, Marshal
-// returns InvalidMarshalError. If slice elements are not structs, Marshal will
-// return InvalidEncodeError.
+// Marshal returns the CSV encoding of slice v. If v is not a slice or elements
+// are not structs then Marshal returns InvalidMarshalError.
 //
 // Marshal uses the std encoding/csv.Writer with its default settings for csv
 // encoding.
+//
+// Marshal will always encode the CSV header even for the empty slice.
 //
 // For the exact encoding rules look at Encoder.Encode method.
 func Marshal(v interface{}) ([]byte, error) {
@@ -82,9 +83,18 @@ func Marshal(v interface{}) ([]byte, error) {
 		return nil, &InvalidMarshalError{Type: val.Type()}
 	}
 
+	typ := walkType(val.Type().Elem())
+	if typ.Kind() != reflect.Struct {
+		return nil, &InvalidMarshalError{Type: val.Type()}
+	}
+
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 	enc := NewEncoder(w)
+
+	if err := enc.encodeHeader(typ); err != nil {
+		return nil, err
+	}
 
 	l := val.Len()
 	for i := 0; i < l; i++ {
@@ -162,11 +172,7 @@ func Header(v interface{}, tag string) ([]string, error) {
 		return nil, &UnsupportedTypeError{}
 	}
 
-	typ := val.Type()
-	for typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-
+	typ := walkType(val.Type())
 	if typ.Kind() != reflect.Struct {
 		return nil, &UnsupportedTypeError{Type: typ}
 	}

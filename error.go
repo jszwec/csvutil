@@ -96,6 +96,11 @@ func (e *InvalidMarshalError) Error() string {
 	if e.Type == nil {
 		return "csvutil: Marshal(nil)"
 	}
+
+	if e.Type.Kind() == reflect.Slice {
+		return "csvutil: Marshal(non struct slice " + e.Type.String() + ")"
+	}
+
 	return "csvutil: Marshal(non-slice " + e.Type.String() + ")"
 }
 

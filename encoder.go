@@ -149,11 +149,7 @@ func (e *Encoder) EncodeHeader(v interface{}) error {
 		return &UnsupportedTypeError{}
 	}
 
-	typ := val.Type()
-	for typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-
+	typ := walkType(val.Type())
 	if typ.Kind() != reflect.Struct {
 		return &UnsupportedTypeError{Type: typ}
 	}
@@ -269,4 +265,11 @@ func walkValue(v reflect.Value) reflect.Value {
 			return v
 		}
 	}
+}
+
+func walkType(typ reflect.Type) reflect.Type {
+	for typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	return typ
 }
