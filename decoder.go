@@ -192,6 +192,13 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
 			fv = fv.Field(i)
 			if fv.Kind() == reflect.Ptr {
 				if fv.IsNil() {
+					// this can happen if a field is an unexported embedded
+					// pointer type. In Go prior to 1.10 it was possible to
+					// set such value because of a bug in the reflect package
+					// https://github.com/golang/go/issues/21353
+					if !fv.CanSet() {
+						return errPtrUnexportedStruct(fv.Type())
+					}
 					fv.Set(reflect.New(fv.Type().Elem()))
 				}
 				fv = fv.Elem()

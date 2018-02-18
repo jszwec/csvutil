@@ -268,6 +268,10 @@ type UnexportedEmbedded struct {
 	embedded
 }
 
+type UnexportedEmbeddedPtr struct {
+	*embedded
+}
+
 type A struct {
 	B
 	X int
@@ -554,6 +558,22 @@ string,"{""key"":""value""}"
 			expectedRecord: []string{"1", "1"},
 			header:         []string{"foo", "bar"},
 			unused:         []int{1},
+		},
+		{
+			desc: "decode into ptr unexported embedded field",
+			in:   "foo,bar\n1,1",
+			out:  &UnexportedEmbeddedPtr{},
+			expected: &UnexportedEmbeddedPtr{
+				&embedded{
+					Foo: 1,
+					bar: 0,
+				},
+			},
+			expectedRecord: []string{"1", "1"},
+			header:         []string{"foo", "bar"},
+			unused:         []int{1},
+			// this test will fail starting go1.10
+			err: ptrUnexportedEmbeddedDecodeErr,
 		},
 		{
 			desc: "embedded field conflict #1",

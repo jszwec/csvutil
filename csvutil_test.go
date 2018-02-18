@@ -1,7 +1,6 @@
 package csvutil
 
 import (
-	"encoding/csv"
 	"reflect"
 	"testing"
 )
@@ -92,12 +91,12 @@ func TestUnmarshal(t *testing.T) {
 			{
 				desc: "invalid first line",
 				data: []byte(`"`),
-				err:  &csv.ParseError{Line: 1, Column: 1, Err: csv.ErrQuote},
+				err:  testUnmarshalInvalidFirstLineErr,
 			},
 			{
 				desc: "invalid second line",
 				data: []byte("line\n\""),
-				err:  &csv.ParseError{Line: 2, Column: 1, Err: csv.ErrQuote},
+				err:  testUnmarshalInvalidSecondLineErr,
 			},
 		}
 

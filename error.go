@@ -2,6 +2,7 @@ package csvutil
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -114,4 +115,8 @@ type MarshalerError struct {
 
 func (e *MarshalerError) Error() string {
 	return "csvutil: error calling " + e.MarshalerType + " for type " + e.Type.String() + ": " + e.Err.Error()
+}
+
+func errPtrUnexportedStruct(typ reflect.Type) error {
+	return fmt.Errorf("csvutil: cannot decode into a pointer to unexported struct: %s", typ)
 }
