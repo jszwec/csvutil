@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"io"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -892,6 +893,28 @@ s,1,3.14,true
 			}
 			if !reflect.DeepEqual(dec.Unused(), f.unused) {
 				t.Errorf("want %v; got %v", f.unused, dec.Unused())
+			}
+		}
+	})
+
+	t.Run("decode NaN", func(t *testing.T) {
+		data := []byte("F1,F2,F3,F4,F5\nNaN,nan,NAN,nAn,NaN")
+		dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+		if err != nil {
+			t.Fatalf("want err=nil; got %v", err)
+		}
+
+		v := struct {
+			F1, F2, F3, F4 float64
+			F5             Float // aliased type
+		}{}
+		if err := dec.Decode(&v); err != nil {
+			t.Fatalf("want err=nil; got %v", err)
+		}
+
+		for _, f := range []float64{v.F1, v.F2, v.F3, v.F4, float64(v.F5)} {
+			if !math.IsNaN(f) {
+				t.Errorf("want f=NaN; got %v", f)
 			}
 		}
 	})

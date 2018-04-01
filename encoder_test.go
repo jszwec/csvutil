@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -520,6 +521,34 @@ func TestEncoder(t *testing.T) {
 				{"0", ""},
 				{"0"},
 				{},
+			},
+		},
+		{
+			desc: "encode NaN",
+			in: []interface{}{
+				struct {
+					Float float64
+				}{math.NaN()},
+				struct {
+					Float Float
+				}{Float(math.NaN())},
+			},
+			out: [][]string{
+				{"Float"},
+				{"NaN"},
+				{"NaN"},
+			},
+		},
+		{
+			desc: "encode NaN with aliased type",
+			in: []interface{}{
+				struct {
+					Float Float
+				}{Float(math.NaN())},
+			},
+			out: [][]string{
+				{"Float"},
+				{"NaN"},
 			},
 		},
 		{

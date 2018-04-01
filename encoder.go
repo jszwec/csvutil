@@ -102,7 +102,7 @@ func NewEncoder(w Writer) *Encoder {
 // Bool types are encoded as 'true' or 'false'.
 //
 // Float types are encoded using strconv.FormatFloat with precision -1 and 'G'
-// format.
+// format. NaN values are encoded as 'NaN' string.
 //
 // Fields of type []byte are being encoded as base64-encoded strings.
 //

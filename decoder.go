@@ -98,6 +98,9 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // field have the same fields, the main struct's fields will be populated.
 //
 // Fields of type []byte expect the data to be base64 encoded strings.
+//
+// Float fields are decoded to NaN if a string value is 'NaN'. This check
+// is case insensitive.
 func (d *Decoder) Decode(v interface{}) (err error) {
 	d.record, err = d.r.Read()
 	if err != nil {
