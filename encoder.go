@@ -60,6 +60,10 @@ type Encoder struct {
 	// options (Default: 'csv').
 	Tag string
 
+	// If AutoHeader is true, a struct header is encoded during the first call
+	// to Encode automatically (Default: true).
+	AutoHeader bool
+
 	w        Writer
 	cache    encCache
 	noHeader bool
@@ -68,8 +72,9 @@ type Encoder struct {
 // NewEncoder returns a new encoder that writes to w.
 func NewEncoder(w Writer) *Encoder {
 	return &Encoder{
-		w:        w,
-		noHeader: true,
+		w:          w,
+		noHeader:   true,
+		AutoHeader: true,
 	}
 }
 
@@ -78,9 +83,9 @@ func NewEncoder(w Writer) *Encoder {
 //
 // Only the exported fields will be encoded.
 //
-// First call to Encode will write a header unless EncodeHeader was called first.
-// Header names can be customized by using tags ('csv' by default), otherwise
-// original Field names are used.
+// First call to Encode will write a header unless EncodeHeader was called first
+// or AutoHeader is false. Header names can be customized by using tags
+// ('csv' by default), otherwise original Field names are used.
 //
 // Header and fields are written in the same order as struct fields are defined.
 // Embedded struct's fields are treated as if they were part of the outer struct.
@@ -168,7 +173,7 @@ func (e *Encoder) encode(v reflect.Value) error {
 		return &InvalidEncodeError{v.Type()}
 	}
 
-	if e.noHeader {
+	if e.AutoHeader && e.noHeader {
 		if err := e.encodeHeader(v.Type()); err != nil {
 			return err
 		}

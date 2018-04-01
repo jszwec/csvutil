@@ -950,6 +950,26 @@ func TestEncoder(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("AutoHeader false", func(t *testing.T) {
+		var buf bytes.Buffer
+		w := csv.NewWriter(&buf)
+		enc := NewEncoder(w)
+		enc.AutoHeader = false
+
+		if err := enc.Encode(TypeG{
+			String: "s",
+			Int:    10,
+		}); err != nil {
+			t.Fatalf("want err=nil; got %v", err)
+		}
+		w.Flush()
+
+		expected := encodeCSV(t, [][]string{{"s", "10"}})
+		if expected != buf.String() {
+			t.Errorf("want %s; got %s", expected, buf.String())
+		}
+	})
 }
 
 func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {
