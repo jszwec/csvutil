@@ -529,13 +529,9 @@ func TestEncoder(t *testing.T) {
 				struct {
 					Float float64
 				}{math.NaN()},
-				struct {
-					Float Float
-				}{Float(math.NaN())},
 			},
 			out: [][]string{
 				{"Float"},
-				{"NaN"},
 				{"NaN"},
 			},
 		},

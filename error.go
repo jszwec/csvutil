@@ -21,8 +21,8 @@ func (e *UnmarshalTypeError) Error() string {
 	return "csvutil: cannot unmarshal " + e.Value + " into Go value of type " + e.Type.String()
 }
 
-// An UnsupportedTypeError is returned when attempting to decode an unsupported
-// value type.
+// An UnsupportedTypeError is returned when attempting to encode or decode
+// a value of an unsupported type.
 type UnsupportedTypeError struct {
 	Type reflect.Type
 }
@@ -35,7 +35,7 @@ func (e *UnsupportedTypeError) Error() string {
 }
 
 // An InvalidDecodeError describes an invalid argument passed to Decode.
-// (The argument to Decode must be a non-nil pointer.)
+// (The argument to Decode must be a non-nil struct pointer)
 type InvalidDecodeError struct {
 	Type reflect.Type
 }
@@ -57,7 +57,7 @@ func (e *InvalidDecodeError) Error() string {
 }
 
 // An InvalidUnmarshalError describes an invalid argument passed to Unmarshal.
-// (The argument to Unmarshal must be a non-nil slice pointer.)
+// (The argument to Unmarshal must be a non-nil slice of structs pointer)
 type InvalidUnmarshalError struct {
 	Type reflect.Type
 }
@@ -74,8 +74,7 @@ func (e *InvalidUnmarshalError) Error() string {
 	return "csvutil: Unmarshal(non-slice pointer)"
 }
 
-// InvalidEncodeError is returned by Encode when the passed argument v is not
-// a struct.
+// InvalidEncodeError is returned by Encode when the provided value was invalid.
 type InvalidEncodeError struct {
 	Type reflect.Type
 }
@@ -87,8 +86,7 @@ func (e *InvalidEncodeError) Error() string {
 	return "csvutil: Encode(" + e.Type.String() + ")"
 }
 
-// InvalidMarshalError is returned by Marshal when the provided type was
-// not a slice.
+// InvalidMarshalError is returned by Marshal when the provided value was invalid.
 type InvalidMarshalError struct {
 	Type reflect.Type
 }
