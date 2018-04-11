@@ -16,6 +16,11 @@ Installation
 
     go get github.com/jszwec/csvutil
 
+Requirements
+-------------
+
+* Go1.7+
+
 Example
 --------
 

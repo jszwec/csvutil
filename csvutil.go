@@ -137,12 +137,6 @@ func countRecords(s []byte) (n int) {
 	}
 }
 
-func newCSVReader(r io.Reader) *csv.Reader {
-	rr := csv.NewReader(r)
-	rr.ReuseRecord = true
-	return rr
-}
-
 // Header scans the provided struct type and generates a CSV header for it.
 //
 // Field names are written in the same order as struct fields are defined.

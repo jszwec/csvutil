@@ -973,8 +973,6 @@ func TestEncoder(t *testing.T) {
 }
 
 func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {
-	t.Helper()
-
 	w := csv.NewWriter(buf)
 	enc := NewEncoder(w)
 	enc.Tag = tag
@@ -988,8 +986,6 @@ func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {
 }
 
 func encodeCSV(t *testing.T, recs [][]string) string {
-	t.Helper()
-
 	var buf bytes.Buffer
 	if err := csv.NewWriter(&buf).WriteAll(recs); err != nil {
 		t.Fatalf("want err=nil; got %v", err)

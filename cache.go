@@ -3,7 +3,6 @@ package csvutil
 import (
 	"reflect"
 	"sort"
-	"sync"
 )
 
 type field struct {
@@ -14,31 +13,22 @@ type field struct {
 
 type fields []field
 
-func (fs fields) byIndex() {
-	sort.Slice(fs, func(i, j int) bool {
-		for k, n := range fs[i].index {
-			if n != fs[j].index[k] {
-				return n < fs[j].index[k]
-			}
+func (fs fields) Len() int { return len(fs) }
+
+func (fs fields) Swap(i, j int) { fs[i], fs[j] = fs[j], fs[i] }
+
+func (fs fields) Less(i, j int) bool {
+	for k, n := range fs[i].index {
+		if n != fs[j].index[k] {
+			return n < fs[j].index[k]
 		}
-		return len(fs[i].index) < len(fs[j].index)
-	})
+	}
+	return len(fs[i].index) < len(fs[j].index)
 }
 
 type typeKey struct {
 	tag string
 	reflect.Type
-}
-
-var fieldCache sync.Map // map[typeKey][]field
-
-func cachedFields(k typeKey) fields {
-	if v, ok := fieldCache.Load(k); ok {
-		return v.(fields)
-	}
-
-	v, _ := fieldCache.LoadOrStore(k, buildFields(k))
-	return v.(fields)
 }
 
 type fieldMap map[string]fields
@@ -78,7 +68,7 @@ func (m fieldMap) fields() fields {
 		}
 		out = append(out, v[0])
 	}
-	out.byIndex()
+	sort.Sort(out)
 	return out
 }
 
