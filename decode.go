@@ -3,6 +3,7 @@ package csvutil
 import (
 	"encoding"
 	"encoding/base64"
+	"math"
 	"reflect"
 	"strconv"
 )
@@ -47,7 +48,9 @@ func decodeFloat(t reflect.Type) decodeFunc {
 	bits := t.Bits()
 	return func(s string, v reflect.Value) error {
 		n, err := strconv.ParseFloat(s, bits)
-		if err != nil {
+		if err != nil && s == "" {
+			n = math.NaN()
+		} else if err != nil {
 			return &UnmarshalTypeError{Value: s, Type: t}
 		}
 		v.SetFloat(n)
