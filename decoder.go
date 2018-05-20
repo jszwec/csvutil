@@ -8,6 +8,7 @@ type decField struct {
 	columnIndex int
 	field
 	decodeFunc
+	zero interface{}
 }
 
 // A Decoder reads and decodes string records into structs.
@@ -15,6 +16,27 @@ type Decoder struct {
 	// Tag defines which key in the struct field's tag to scan for names and
 	// options (Default: 'csv').
 	Tag string
+
+	// If not nil, Map is a function that is called for each field in the csv
+	// record before decoding the data. It allows mapping certain string values
+	// for specific columns or types to a known format. Decoder calls Map with
+	// the current column name (taken from header) and a zero non-pointer value
+	// of a type to which it is going to decode data into. Implementations
+	// should use type assertions to recognize the type.
+	//
+	// The good example of use case for Map is if NaN values are represented by
+	// eg 'n/a' string, implementing a specific Map function for all floats
+	// could map 'n/a' back into 'NaN' to allow successful decoding.
+	//
+	// Use Map with caution. If the requirements of column or type are not met
+	// Map should return 'field', since it is the original value that was
+	// read from the csv input, this would indicate no change.
+	//
+	// If struct field is an interface v will be of type string, because this
+	// is the default destination type for interface{}.
+	//
+	// Map must be set before the first call to Decode and not changed after it.
+	Map func(field, col string, v interface{}) string
 
 	r       Reader
 	header  []string
@@ -101,6 +123,8 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 //
 // Float fields are decoded to NaN if a string value is 'NaN'. This check
 // is case insensitive.
+//
+// Interface fields are decoded to strings.
 func (d *Decoder) Decode(v interface{}) (err error) {
 	d.record, err = d.r.Read()
 	if err != nil {
@@ -173,12 +197,22 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
 				return err
 			}
 
-			decFields = append(decFields, decField{
+			df := decField{
 				columnIndex: i,
 				field:       f,
 				decodeFunc:  fn,
-			})
+			}
 
+			if d.Map != nil {
+				switch f.typ.Kind() {
+				case reflect.Interface:
+					df.zero = "" // interface values are decoded to strings
+				default:
+					df.zero = reflect.Zero(walkType(f.typ)).Interface()
+				}
+			}
+
+			decFields = append(decFields, df)
 			d.used[i] = true
 		}
 
@@ -208,7 +242,12 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
 			}
 		}
 
-		if err := f.decodeFunc(record[f.columnIndex], fv); err != nil {
+		s := record[f.columnIndex]
+		if d.Map != nil && f.zero != nil {
+			s = d.Map(s, d.header[f.columnIndex], f.zero)
+		}
+
+		if err := f.decodeFunc(s, fv); err != nil {
 			return err
 		}
 	}

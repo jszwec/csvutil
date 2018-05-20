@@ -918,6 +918,188 @@ s,1,3.14,true
 			}
 		}
 	})
+
+	t.Run("map", func(t *testing.T) {
+		t.Run("receives non-pointer and non-interface zero values", func(t *testing.T) {
+			data := []byte("int,pint,int8,pint8,int16,pint16,int32,pint32,int64,pint64,uint," +
+				"puint,uint8,puint8,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
+				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
+				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,true,true,true,1," +
+				EncodedBinary + "," + EncodedBinaryLarge)
+
+			dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+			if err != nil {
+				t.Fatalf("want err=nil; got %v", err)
+			}
+
+			var out TypeF
+			var counter int
+			m := func(field, col string, v interface{}) string {
+				switch v.(type) {
+				case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64,
+					float32, float64, string, bool, []byte:
+					counter++ // interface values are passed as strings.
+				}
+				return field
+			}
+			dec.Map = m
+
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if numField := reflect.TypeOf(out).NumField(); counter != numField {
+				t.Errorf("expected counter=%d; got %d", numField, counter)
+			}
+		})
+
+		t.Run("replaced value", func(t *testing.T) {
+			m := func(field, col string, v interface{}) string {
+				if _, ok := v.(float64); ok && field == "n/a" {
+					return "NaN"
+				}
+				return field
+			}
+
+			data := []byte("F1,F2,F3\nn/a,n/a,n/a")
+			dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+			if err != nil {
+				t.Fatalf("want err=nil; got %v", err)
+			}
+			dec.Map = m
+
+			var out struct {
+				F1 float64
+				F2 *float64
+				F3 **float64
+			}
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if !math.IsNaN(out.F1) {
+				t.Errorf("want F1 to be NaN but is %f", out.F1)
+			}
+			if out.F2 == nil {
+				t.Error("want F2 to not be nil")
+			}
+			if !math.IsNaN(*out.F2) {
+				t.Errorf("want F2 to be NaN but is %f", *out.F2)
+			}
+			if out.F3 == nil {
+				t.Error("want F3 to not be nil")
+			}
+			if *out.F3 == nil {
+				t.Error("want *F3 to not be nil")
+			}
+			if !math.IsNaN(**out.F3) {
+				t.Errorf("want F3 to be NaN but is %f", **out.F3)
+			}
+		})
+
+		t.Run("unmarshaler types", func(t *testing.T) {
+			m := func(field, col string, v interface{}) string {
+				if _, ok := v.(CSVUnmarshaler); ok && field == "" {
+					return "csv_unmarshaler"
+				}
+				if _, ok := v.(TextUnmarshaler); ok && field == "" {
+					return "text_unmarshaler"
+				}
+				return field
+			}
+
+			data := []byte("csv,pcsv,text,ptext\n,,,")
+			dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+			if err != nil {
+				t.Fatalf("want err=nil; got %v", err)
+			}
+			dec.Map = m
+
+			var out Unmarshalers
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+
+			expected := Unmarshalers{
+				CSVUnmarshaler:   CSVUnmarshaler{String: "unmarshalCSV:csv_unmarshaler"},
+				PCSVUnmarshaler:  &CSVUnmarshaler{String: "unmarshalCSV:csv_unmarshaler"},
+				TextUnmarshaler:  TextUnmarshaler{String: "unmarshalText:text_unmarshaler"},
+				PTextUnmarshaler: &TextUnmarshaler{String: "unmarshalText:text_unmarshaler"},
+			}
+
+			if !reflect.DeepEqual(out, expected) {
+				t.Errorf("want out=%v; got %v", expected, out)
+			}
+		})
+
+		t.Run("interface types", func(t *testing.T) {
+			m := func(field, col string, v interface{}) string {
+				if _, ok := v.(string); ok {
+					return strings.ToUpper(field)
+				}
+				t.Fatalf("expected v to be a string, was %T", v)
+				return field
+			}
+
+			data := []byte("F1,F2,F3\na,b,c")
+			dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+			if err != nil {
+				t.Fatalf("want err=nil; got %v", err)
+			}
+			dec.Map = m
+
+			var out = struct {
+				F1 interface{}
+				F2 *interface{}
+				F3 interface{}
+			}{
+				F3: int(0), // initialize an interface with a different type
+			}
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+
+			if out.F1 != "A" {
+				t.Errorf("expected F1=A got: %v", out.F1)
+			}
+			if *out.F2 != "B" {
+				t.Errorf("expected F2=B got: %v", *out.F2)
+			}
+			if out.F3 != "C" {
+				t.Errorf("expected F3=A got: %v", out.F3)
+			}
+		})
+
+		t.Run("receives a proper column name", func(t *testing.T) {
+			const val = "magic_column"
+			m := func(field, col string, v interface{}) string {
+				if col == "F2" {
+					return val
+				}
+				return field
+			}
+
+			data := []byte("F1,F2\na,b")
+			dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+			if err != nil {
+				t.Fatalf("want err=nil; got %v", err)
+			}
+			dec.Map = m
+
+			var out = struct {
+				F1 string
+				F2 string
+			}{}
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+
+			if out.F1 != "a" {
+				t.Errorf("expected F1=a got: %v", out.F1)
+			}
+			if out.F2 != val {
+				t.Errorf("expected F2=%s got: %v", val, out.F1)
+			}
+		})
+	})
 }
 
 func BenchmarkDecode(b *testing.B) {

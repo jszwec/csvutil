@@ -181,6 +181,29 @@ it to a decoder.
 	// [{ID:1 Name:John Age:27 City:la} {ID:2 Name:Bob Age:0 City:ny}]
 ```
 
+### Decoder.Map ###
+
+The Decoder's [Map](https://godoc.org/github.com/jszwec/csvutil#Decoder.Map) function is a powerful tool that can help clean up or normalize
+the incoming data before the actual decoding takes place.
+
+Lets say we want to decode some floats and the csv input contains some NaN values, but these values are represented by the 'n/a' string. An attempt to decode 'n/a' into float will end up with error, because strconv.ParseFloat expects 'NaN'. Knowing that, we can implement a Map function that will normalize our 'n/a' string and turn it to 'NaN' only for float types.
+
+```go
+	dec, err := NewDecoder(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dec.Map = func(field, column string, v interface{}) string {
+		if _, ok := v.(float64); ok && field == "n/a" {
+			return "NaN"
+		}
+		return field
+	}
+```
+
+Now our float64 fields will be decoded properly into NaN. What about float32, float type aliases and other NaN formats? Look at the full example [here](https://gist.github.com/jszwec/2bb94f8f3612e0162eb16003701f727e).
+
 Performance
 ------------
 
