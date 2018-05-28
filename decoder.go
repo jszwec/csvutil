@@ -43,6 +43,10 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 		}
 	}
 
+	h := make([]string, len(header))
+	copy(h, header)
+	header = h
+
 	m := make(map[string]int, len(header))
 	for i, h := range header {
 		m[h] = i

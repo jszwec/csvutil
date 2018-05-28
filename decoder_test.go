@@ -3,7 +3,6 @@ package csvutil
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/csv"
 	"encoding/json"
 	"io"
 	"math"
@@ -725,7 +724,7 @@ string,"{""key"":""value""}"
 
 	for _, f := range fixtures {
 		t.Run(f.desc, func(t *testing.T) {
-			r, err := NewDecoder(csv.NewReader(strings.NewReader(f.in)), f.inheader...)
+			r, err := NewDecoder(newCSVReader(strings.NewReader(f.in)), f.inheader...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -795,7 +794,7 @@ string,"{""key"":""value""}"
 		}
 
 		for _, f := range fixtures {
-			r, err := NewDecoder(csv.NewReader(strings.NewReader("string\ns")))
+			r, err := NewDecoder(newCSVReader(strings.NewReader("string\ns")))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -816,7 +815,7 @@ string,"{""key"":""value""}"
 			Col2 string `csv:"col2"`
 		}
 		data := []byte("1,1,1")
-		r, err := NewDecoder(csv.NewReader(bytes.NewReader(data)), "col1", "col2")
+		r, err := NewDecoder(newCSVReader(bytes.NewReader(data)), "col1", "col2")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -853,7 +852,7 @@ s,1,3.14,true
 			Foo    int
 		}
 
-		dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+		dec, err := NewDecoder(newCSVReader(bytes.NewReader(data)))
 		if err != nil {
 			t.Errorf("want err=nil; got %v", err)
 		}
@@ -899,7 +898,7 @@ s,1,3.14,true
 
 	t.Run("decode NaN", func(t *testing.T) {
 		data := []byte("F1,F2,F3,F4,F5\nNaN,nan,NAN,nAn,NaN")
-		dec, err := NewDecoder(csv.NewReader(bytes.NewReader(data)))
+		dec, err := NewDecoder(newCSVReader(bytes.NewReader(data)))
 		if err != nil {
 			t.Fatalf("want err=nil; got %v", err)
 		}
