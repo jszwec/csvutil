@@ -39,12 +39,12 @@ type Decoder struct {
 	Map func(field, col string, v interface{}) string
 
 	r       Reader
+	typeKey typeKey
+	hmap    map[string]int
 	header  []string
 	record  []string
-	typeKey typeKey
 	cache   []decField
-	hmap    map[string]int
-	used    []bool
+	unused  []int
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -65,6 +65,10 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 		}
 	}
 
+	h := make([]string, len(header))
+	copy(h, header)
+	header = h
+
 	m := make(map[string]int, len(header))
 	for i, h := range header {
 		m[h] = i
@@ -74,7 +78,7 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 		r:      r,
 		header: header,
 		hmap:   m,
-		used:   make([]bool, len(header)),
+		unused: make([]int, 0, len(header)),
 	}, nil
 }
 
@@ -154,13 +158,14 @@ func (d *Decoder) Header() []string {
 
 // Unused returns a list of column indexes that were not used during decoding
 // due to lack of matching struct field.
-func (d *Decoder) Unused() (indexes []int) {
-	for i, b := range d.used {
-		if !b {
-			indexes = append(indexes, i)
-		}
+func (d *Decoder) Unused() []int {
+	if len(d.unused) == 0 {
+		return nil
 	}
-	return
+
+	indices := make([]int, len(d.unused))
+	copy(indices, d.unused)
+	return indices
 }
 
 func (d *Decoder) unmarshal(record []string, v interface{}) error {
@@ -178,48 +183,12 @@ func (d *Decoder) unmarshal(record []string, v interface{}) error {
 }
 
 func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
-	if k := (typeKey{d.tag(), v.Type()}); d.typeKey != k {
-		for i := range d.used {
-			d.used[i] = false
-		}
-
-		fields := cachedFields(k)
-
-		decFields := make([]decField, 0, len(fields))
-		for _, f := range fields {
-			i, ok := d.hmap[f.tag.name]
-			if !ok {
-				continue
-			}
-
-			fn, err := decodeFn(f.typ)
-			if err != nil {
-				return err
-			}
-
-			df := decField{
-				columnIndex: i,
-				field:       f,
-				decodeFunc:  fn,
-			}
-
-			if d.Map != nil {
-				switch f.typ.Kind() {
-				case reflect.Interface:
-					df.zero = "" // interface values are decoded to strings
-				default:
-					df.zero = reflect.Zero(walkType(f.typ)).Interface()
-				}
-			}
-
-			decFields = append(decFields, df)
-			d.used[i] = true
-		}
-
-		d.cache, d.typeKey = decFields, k
+	fields, err := d.fields(typeKey{d.tag(), v.Type()})
+	if err != nil {
+		return err
 	}
 
-	for _, f := range d.cache {
+	for _, f := range fields {
 		if f.tag.omitEmpty && record[f.columnIndex] == "" {
 			continue
 		}
@@ -252,6 +221,56 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
 		}
 	}
 	return nil
+}
+
+func (d *Decoder) fields(k typeKey) ([]decField, error) {
+	if k == d.typeKey {
+		return d.cache, nil
+	}
+
+	fields := cachedFields(k)
+	decFields := make([]decField, 0, len(fields))
+	used := make([]bool, len(d.header))
+
+	for _, f := range fields {
+		i, ok := d.hmap[f.tag.name]
+		if !ok {
+			continue
+		}
+
+		fn, err := decodeFn(f.typ)
+		if err != nil {
+			return nil, err
+		}
+
+		df := decField{
+			columnIndex: i,
+			field:       f,
+			decodeFunc:  fn,
+		}
+
+		if d.Map != nil {
+			switch f.typ.Kind() {
+			case reflect.Interface:
+				df.zero = "" // interface values are decoded to strings
+			default:
+				df.zero = reflect.Zero(walkType(f.typ)).Interface()
+			}
+		}
+
+		decFields = append(decFields, df)
+		used[i] = true
+	}
+
+	d.unused = d.unused[:0]
+	for i, b := range used {
+		if !b {
+			d.unused = append(d.unused, i)
+		}
+	}
+
+	d.cache, d.typeKey = decFields, k
+	return d.cache, nil
 }
 
 func (d *Decoder) tag() string {
