@@ -788,8 +788,10 @@ string,"{""key"":""value""}"
 			expected string
 		}{
 			{nil, "csvutil: Decode(nil)"},
+			{nilIface, "csvutil: Decode(nil)"},
 			{struct{}{}, "csvutil: Decode(non-pointer struct {})"},
 			{(*int)(nil), "csvutil: Decode(non-struct pointer)"},
+			{&nilIface, "csvutil: Decode(non-struct pointer)"},
 			{(*TypeA)(nil), "csvutil: Decode(nil *csvutil.TypeA)"},
 		}
 
@@ -1096,6 +1098,165 @@ s,1,3.14,true
 			}
 			if out.F2 != val {
 				t.Errorf("expected F2=%s got: %v", val, out.F1)
+			}
+		})
+	})
+
+	t.Run("decoding into specific values", func(t *testing.T) {
+		setup := func(t *testing.T) *Decoder {
+			data := []byte("String,Int\na,1")
+			dec, err := NewDecoder(newCSVReader(bytes.NewReader(data)))
+			if err != nil {
+				t.Fatalf("want err=nil; got %v", err)
+			}
+			return dec
+		}
+
+		t.Run("wrapped in interfaces", func(t *testing.T) {
+			dec := setup(t)
+
+			var out *TypeG
+			var ii interface{} = &out
+			var i interface{} = ii
+			if err := dec.Decode(&i); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if out == nil {
+				t.Fatal("want out to not be nil")
+			}
+			if expected := (TypeG{String: "a", Int: 1}); *out != expected {
+				t.Errorf("want expected=%v; got %v", expected, *out)
+			}
+		})
+
+		t.Run("wrapped in interfaces #2", func(t *testing.T) {
+			dec := setup(t)
+
+			var out *TypeG
+			var ii interface{} = &out
+			var i interface{} = &ii
+			if err := dec.Decode(&i); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if out == nil {
+				t.Fatal("want out to not be nil")
+			}
+			if expected := (TypeG{String: "a", Int: 1}); *out != expected {
+				t.Errorf("want expected=%v; got %v", expected, *out)
+			}
+		})
+
+		t.Run("wrapped in interfaces not ptr", func(t *testing.T) {
+			dec := setup(t)
+
+			var out *TypeG
+			var ii interface{} = out
+			var i interface{} = ii
+
+			expected := &InvalidDecodeError{Type: reflect.TypeOf(&TypeG{})}
+			if err := dec.Decode(i); !reflect.DeepEqual(err, expected) {
+				t.Errorf("want err=%v; got %v", expected, err)
+			}
+		})
+
+		t.Run("wrapped in interface non ptr value", func(t *testing.T) {
+			dec := setup(t)
+
+			var out TypeG
+			var ii interface{} = &out
+			var i interface{} = ii
+			if err := dec.Decode(&i); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if expected := (TypeG{String: "a", Int: 1}); out != expected {
+				t.Errorf("want expected=%v; got %v", expected, out)
+			}
+		})
+
+		t.Run("interface to interface", func(t *testing.T) {
+			dec := setup(t)
+
+			var ii interface{}
+			var i interface{} = &ii
+
+			expected := &InvalidDecodeError{Type: reflect.TypeOf((*interface{})(nil))}
+			if err := dec.Decode(&i); !reflect.DeepEqual(err, expected) {
+				t.Errorf("want err=%v; got %v", expected, err)
+			}
+		})
+
+		t.Run("interface to nil interface", func(t *testing.T) {
+			dec := setup(t)
+
+			var ii *interface{}
+			var i interface{} = ii
+
+			expected := &InvalidDecodeError{Type: reflect.TypeOf((*interface{})(nil))}
+			if err := dec.Decode(&i); !reflect.DeepEqual(err, expected) {
+				t.Errorf("want err=%v; got %v", expected, err)
+			}
+		})
+
+		t.Run("nil ptr value", func(t *testing.T) {
+			dec := setup(t)
+
+			var out *TypeG
+			expected := &InvalidDecodeError{Type: reflect.TypeOf(&TypeG{})}
+			if err := dec.Decode(out); !reflect.DeepEqual(err, expected) {
+				t.Errorf("want err=%v; got %v", expected, err)
+			}
+		})
+
+		t.Run("nil ptr value ptr", func(t *testing.T) {
+			dec := setup(t)
+
+			var out *TypeG
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if out == nil {
+				t.Fatal("want out to not be nil")
+			}
+			if expected := (TypeG{String: "a", Int: 1}); *out != expected {
+				t.Errorf("want expected=%v; got %v", expected, *out)
+			}
+		})
+
+		t.Run("nil double ptr value", func(t *testing.T) {
+			dec := setup(t)
+
+			var out **TypeG
+
+			expected := &InvalidDecodeError{Type: reflect.TypeOf(out)}
+			if err := dec.Decode(out); !reflect.DeepEqual(err, expected) {
+				t.Errorf("want err=%v; got %v", expected, err)
+			}
+		})
+
+		t.Run("nil double ptr value ptr", func(t *testing.T) {
+			dec := setup(t)
+
+			var out **TypeG
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if out == nil {
+				t.Fatal("want out to not be nil")
+			}
+			if expected := (TypeG{String: "a", Int: 1}); **out != expected {
+				t.Errorf("want expected=%v; got %v", expected, **out)
+			}
+		})
+
+		t.Run("non ptr value ptr", func(t *testing.T) {
+			dec := setup(t)
+
+			var out TypeG
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if expected := (TypeG{String: "a", Int: 1}); out != expected {
+				t.Errorf("want expected=%v; got %v", expected, out)
 			}
 		})
 	})

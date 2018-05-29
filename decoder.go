@@ -281,24 +281,25 @@ func (d *Decoder) tag() string {
 }
 
 func indirect(v reflect.Value) reflect.Value {
-	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
-		v = v.Addr()
-	}
 	for {
-		if v.Kind() == reflect.Interface && !v.IsNil() {
+		switch v.Kind() {
+		case reflect.Interface:
+			if v.IsNil() {
+				return v
+			}
 			e := v.Elem()
 			if e.Kind() == reflect.Ptr && !e.IsNil() {
 				v = e
 				continue
 			}
+			return v
+		case reflect.Ptr:
+			if v.IsNil() {
+				v.Set(reflect.New(v.Type().Elem()))
+			}
+			v = v.Elem()
+		default:
+			return v
 		}
-		if v.Kind() != reflect.Ptr {
-			break
-		}
-		if v.IsNil() {
-			v.Set(reflect.New(v.Type().Elem()))
-		}
-		v = v.Elem()
 	}
-	return v
 }
