@@ -8,6 +8,7 @@ import (
 type encField struct {
 	field
 	encodeFunc
+	zero reflect.Value
 }
 
 type encCache struct {
@@ -32,6 +33,10 @@ func (c *encCache) fields(k typeKey) ([]encField, error) {
 			encFields[i] = encField{
 				field:      f,
 				encodeFunc: fn,
+			}
+
+			if f.blank {
+				encFields[i].zero = reflect.Zero(f.typ)
 			}
 		}
 		c.cache, c.typeKey = encFields, k
@@ -214,6 +219,10 @@ func (e *Encoder) marshal(v reflect.Value) error {
 		v := walkIndex(v, f.index)
 		if !v.IsValid() {
 			continue
+		}
+
+		if f.blank {
+			v = f.zero
 		}
 
 		n, err := f.encodeFunc(v, buf, f.tag.omitEmpty)

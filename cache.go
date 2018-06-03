@@ -7,6 +7,7 @@ import (
 
 type field struct {
 	typ   reflect.Type
+	blank bool
 	tag   tag
 	index []int
 }
@@ -92,7 +93,7 @@ func buildFields(k typeKey) fields {
 		for i := 0; i < numField; i++ {
 			sf := f.typ.Field(i)
 
-			if sf.PkgPath != "" && !sf.Anonymous {
+			if sf.PkgPath != "" && !sf.Anonymous && sf.Name != "_" {
 				// unexported field
 				continue
 			}
@@ -109,7 +110,8 @@ func buildFields(k typeKey) fields {
 			}
 
 			tag := parseTag(k.tag, sf)
-			if tag.ignore {
+			if tag.ignore || (tag.name == "_" && tag.empty) {
+				// ignore if tag is '-' or it is a blank field without tag.
 				continue
 			}
 
@@ -120,6 +122,7 @@ func buildFields(k typeKey) fields {
 
 			newf := field{
 				typ:   ft,
+				blank: sf.Name == "_",
 				tag:   tag,
 				index: makeIndex(f.index, i),
 			}

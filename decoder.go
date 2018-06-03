@@ -233,6 +233,10 @@ func (d *Decoder) fields(k typeKey) ([]decField, error) {
 	used := make([]bool, len(d.header))
 
 	for _, f := range fields {
+		if f.blank {
+			continue
+		}
+
 		i, ok := d.hmap[f.tag.name]
 		if !ok {
 			continue

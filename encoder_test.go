@@ -43,6 +43,17 @@ func (m CSVMarshaler) MarshalCSV() ([]byte, error) {
 	return []byte("csvmarshaler"), nil
 }
 
+type unexportedCSVMarshaler struct {
+	Err error
+}
+
+func (m unexportedCSVMarshaler) MarshalCSV() ([]byte, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	return []byte("csvmarshaler"), nil
+}
+
 type TextMarshaler struct {
 	Err error
 }
@@ -560,6 +571,29 @@ func TestEncoder(t *testing.T) {
 				func() (v interface{}) { v = &struct{ A int }{5}; return v }(),
 			},
 			out: [][]string{{"A"}, {"5"}},
+		},
+		{
+			desc: "blank fields",
+			in: []interface{}{
+				struct {
+					_          string `csv:"f1"`
+					_          struct{}
+					_          int `csv:"f2"`
+					F3         int `csv:"f3"`
+					_          int
+					_          interface{}             `csv:"f4"`
+					_          *int                    `csv:"f5"`
+					_          CSVMarshaler            `csv:"f6"`
+					_          *CSVMarshaler           `csv:"f7"`
+					_          unexportedCSVMarshaler  `csv:"f8"`
+					_          *unexportedCSVMarshaler `csv:"f9"`
+					Underscore int                     `csv:"_"`
+				}{},
+			},
+			out: [][]string{
+				{"f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "_"},
+				{"", "0", "0", "", "", "csvmarshaler", "", "csvmarshaler", "", "0"},
+			},
 		},
 		{
 			desc: "csv marshaler error",

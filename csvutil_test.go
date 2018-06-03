@@ -571,6 +571,20 @@ func TestHeader(t *testing.T) {
 				"pbinary",
 			},
 		},
+		{
+			desc: "blank fields",
+			v: &struct {
+				_  struct{} `csv:"f1"`
+				_  struct{}
+				_  int `csv:"f2"`
+				F3 int `csv:"f3"`
+				_  int
+				_  interface{} `csv:"f4"`
+				_  struct{}    `rand:"f5"`
+			}{},
+			tag:    "csv",
+			header: []string{"f1", "f2", "f3", "f4"},
+		},
 	}
 
 	for _, f := range fixture {

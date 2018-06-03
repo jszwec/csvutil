@@ -655,6 +655,23 @@ string,"{""key"":""value""}"
 			},
 		},
 		{
+			desc: "blank fields are ignored",
+			in:   "foo,Float,Int\n10,3.14,1",
+			out: &struct {
+				_     struct{}
+				Float float64
+				_     int `csv:"Int"`
+			}{},
+			expected: &struct {
+				_     struct{}
+				Float float64
+				_     int `csv:"Int"`
+			}{Float: 3.14},
+			expectedRecord: []string{"10", "3.14", "1"},
+			header:         []string{"foo", "Float", "Int"},
+			unused:         []int{0, 2},
+		},
+		{
 			desc: "invalid int",
 			in:   "Int,Foo\n,",
 			out:  &struct{ Int int }{},
