@@ -23,7 +23,12 @@ const defaultTag = "csv"
 // In case of success the provided slice will be reinitialized and its content
 // fully replaced with decoded data.
 func Unmarshal(data []byte, v interface{}) error {
-	vv := reflect.ValueOf(v)
+	var vv reflect.Value
+	if t, ok := v.(reflect.Value); ok {
+		vv = t
+	} else {
+		vv = reflect.ValueOf(v)
+	}
 
 	if vv.Kind() != reflect.Ptr || vv.IsNil() {
 		return &InvalidUnmarshalError{Type: reflect.TypeOf(v)}
