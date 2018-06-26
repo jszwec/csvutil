@@ -60,6 +60,12 @@ func TestUnmarshal(t *testing.T) {
 			in:   &[]TypeI{},
 			out:  &[]TypeI{},
 		},
+		{
+			desc: "reflect.Value",
+			src:  []byte(""),
+			in:   reflect.ValueOf(&[]TypeI{}),
+			out:  reflect.ValueOf(&[]TypeI{}),
+		},
 	}
 
 	for _, f := range fixture {
@@ -68,12 +74,22 @@ func TestUnmarshal(t *testing.T) {
 				t.Fatalf("want err=nil; got %v", err)
 			}
 
-			if !reflect.DeepEqual(f.in, f.out) {
+			if _, ok := f.in.(reflect.Value); !ok && !reflect.DeepEqual(f.in, f.out) {
 				t.Errorf("want out=%v; got %v", f.out, f.in)
 			}
 
-			out := reflect.ValueOf(f.out).Elem()
-			in := reflect.ValueOf(f.in).Elem()
+			var in, out reflect.Value
+			if v, ok := f.out.(reflect.Value); ok {
+				out = v.Elem()
+			} else {
+				out = reflect.ValueOf(f.out).Elem()
+			}
+
+			if v, ok := f.in.(reflect.Value); ok {
+				in = v.Elem()
+			} else {
+				in = reflect.ValueOf(f.in).Elem()
+			}
 			if cout, cin := out.Cap(), in.Cap(); cout != cin {
 				t.Errorf("want cap=%d; got %d", cout, cin)
 			}
