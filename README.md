@@ -21,10 +21,24 @@ Requirements
 
 * Go1.7+
 
-Example
+Index
+------
+
+1. [Examples](#examples)
+	1. [Unmarshal](#examples_unmarshal)
+	2. [Marshal](#examples_marshal)
+	3. [Unmarshal and metadata](#examples_unmarshal_and_metadata)
+	4. [But my CSV file has no header...](#examples_but_my_csv_has_no_header)
+	5. [Decoder.Map - data normalization](#examples_decoder_map)
+	6. [Different separator/delimiter](#examples_different_separator)
+2. [Performance](#performance)
+	1. [Unmarshal](#performance_unmarshal)
+	2. [Marshal](#performance_marshal)
+
+Example <a name="examples"></a>
 --------
 
-### Unmarshal ###
+### Unmarshal <a name="examples_unmarshal"></a>
 
 Nice and easy Unmarshal is using the std csv.Reader with its default options. Use [Decoder](https://godoc.org/github.com/jszwec/csvutil#Decoder) for streaming and more advanced use cases.
 
@@ -50,7 +64,7 @@ john,27`,
 	// [{Name:jacek Age:26} {Name:john Age:27}]
 ```
 
-### Marshal ###
+### Marshal <a name="examples_marshal"></a>
 
 Marshal is using the std csv.Writer with its default options. Use [Encoder](https://godoc.org/github.com/jszwec/csvutil#Encoder) for streaming or to use a different Writer.
 
@@ -85,7 +99,7 @@ Marshal is using the std csv.Writer with its default options. Use [Encoder](http
 	// Alice,SF,USA,
 ```
 
-### Unmarshal and metadata ###
+### Unmarshal and metadata <a name="examples_unmarshal_and_metadata"></a>
 
 It may happen that your CSV input will not always have the same header. In addition
 to your base fields you may get extra metadata that you would still like to store.
@@ -135,7 +149,7 @@ bob,30,ny,10005`))
 	// [{alice la 25 map[zip:90005]} {bob ny 30 map[zip:10005]}]
 ```
 
-### But my CSV file has no header... ###
+### But my CSV file has no header... <a name="examples_but_my_csv_has_no_header"></a>
 
 Some CSV files have no header, but if you know how it should look like, it is
 possible to define a struct and generate it. All that is left to do, is to pass
@@ -181,7 +195,7 @@ it to a decoder.
 	// [{ID:1 Name:John Age:27 City:la} {ID:2 Name:Bob Age:0 City:ny}]
 ```
 
-### Decoder.Map ###
+### Decoder.Map - data normalization <a name="examples_decoder_map"></a>
 
 The Decoder's [Map](https://godoc.org/github.com/jszwec/csvutil#Decoder.Map) function is a powerful tool that can help clean up or normalize
 the incoming data before the actual decoding takes place.
@@ -204,16 +218,63 @@ Lets say we want to decode some floats and the csv input contains some NaN value
 
 Now our float64 fields will be decoded properly into NaN. What about float32, float type aliases and other NaN formats? Look at the full example [here](https://gist.github.com/jszwec/2bb94f8f3612e0162eb16003701f727e).
 
+### Different separator/delimiter <a name="examples_different_separator"></a>
+
+Some files may use different value separators, for example TSV files would use `\t`. The following examples show how to set up a Decoder and Encoder for such use case.
+
+#### Decoder:
+```go
+	csvReader := csv.NewReader(r)
+	csvReader.Comma = '\t'
+
+	dec, err := NewDecoder(csvReader)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var users []User
+	for {
+		var u User
+		if err := dec.Decode(&u); err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
+		users = append(users, u)
+	}
+
+```
+
+#### Encoder:
+```go
+	var buf bytes.Buffer
+	
+	w := csv.NewWriter(&buf)
+        w.Comma = '\t'
+	enc := csvutil.NewEncoder(w)
+
+	for _, u := range users {
+		if err != enc.Encode(u); err != nil {
+			log.Fatal(err)
+		}
+        }
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		log.Fatal(err)
+	}
+```
+
 Performance
 ------------
 
 csvutil provides the best encoding and decoding performance with small memory usage.
 
-### Unmarshal ###
+### Unmarshal <a name="performance_unmarshal"></a>
 
-benchmark code: https://gist.github.com/jszwec/e8515e741190454fa3494bcd3e1f100f
+[benchmark code](https://gist.github.com/jszwec/e8515e741190454fa3494bcd3e1f100f)
 
-csvutil:
+#### csvutil:
 ```
 BenchmarkUnmarshal/csvutil.Unmarshal/1_record-8         	  300000	      5852 ns/op	    6900 B/op	      32 allocs/op
 BenchmarkUnmarshal/csvutil.Unmarshal/10_records-8       	  100000	     13946 ns/op	    7924 B/op	      41 allocs/op
@@ -223,7 +284,7 @@ BenchmarkUnmarshal/csvutil.Unmarshal/10000_records-8    	     200	   9273741 ns/
 BenchmarkUnmarshal/csvutil.Unmarshal/100000_records-8   	      20	  94125839 ns/op	11628908 B/op	  100031 allocs/op
 ```
 
-gocsv:
+#### gocsv:
 ```
 BenchmarkUnmarshal/gocsv.Unmarshal/1_record-8           	  200000	     10363 ns/op	    7651 B/op	      96 allocs/op
 BenchmarkUnmarshal/gocsv.Unmarshal/10_records-8         	   50000	     31308 ns/op	   13747 B/op	     306 allocs/op
@@ -233,7 +294,7 @@ BenchmarkUnmarshal/gocsv.Unmarshal/10000_records-8      	      50	  24189980 ns/
 BenchmarkUnmarshal/gocsv.Unmarshal/100000_records-8     	       5	 264797120 ns/op	75483184 B/op	 2300104 allocs/op
 ```
 
-easycsv:
+#### easycsv:
 ```
 BenchmarkUnmarshal/easycsv.ReadAll/1_record-8           	  100000	     13287 ns/op	    8855 B/op	      81 allocs/op
 BenchmarkUnmarshal/easycsv.ReadAll/10_records-8         	   20000	     66767 ns/op	   24072 B/op	     391 allocs/op
@@ -243,11 +304,11 @@ BenchmarkUnmarshal/easycsv.ReadAll/10000_records-8      	      20	  60513920 ns/
 BenchmarkUnmarshal/easycsv.ReadAll/100000_records-8     	       2	 623618489 ns/op	190822456 B/op	 3400084 allocs/op
 ```
 
-### Marshal ###
+### Marshal <a name="performance_marshal"></a>
 
-benchmark code: https://gist.github.com/jszwec/31980321e1852ebb5615a44ccf374f17
+[benchmark code](https://gist.github.com/jszwec/31980321e1852ebb5615a44ccf374f17)
 
-csvutil:
+#### csvutil:
 ```
 BenchmarkMarshal/csvutil.Marshal/1_record-8         	  300000	      5501 ns/op	    6336 B/op	      26 allocs/op
 BenchmarkMarshal/csvutil.Marshal/10_records-8       	  100000	     20647 ns/op	    7248 B/op	      36 allocs/op
@@ -257,7 +318,7 @@ BenchmarkMarshal/csvutil.Marshal/10000_records-8    	     100	  16995940 ns/op	 
 BenchmarkMarshal/csvutil.Marshal/100000_records-8   	      10	 172411108 ns/op	22363382 B/op	  100036 allocs/op
 ```
 
-gocsv:
+#### gocsv:
 ```
 BenchmarkMarshal/gocsv.Marshal/1_record-8           	  200000	      7202 ns/op	    5922 B/op	      83 allocs/op
 BenchmarkMarshal/gocsv.Marshal/10_records-8         	   50000	     31821 ns/op	    9427 B/op	     390 allocs/op
