@@ -32,8 +32,9 @@ type Decoder struct {
 	// Map should return 'field', since it is the original value that was
 	// read from the csv input, this would indicate no change.
 	//
-	// If struct field is an interface v will be of type string, because this
-	// is the default destination type for interface{}.
+	// If struct field is an interface v will be of type string, unless the
+	// struct field contains a settable pointer value - then v will be a zero
+	// value of that type.
 	//
 	// Map must be set before the first call to Decode and not changed after it.
 	Map func(field, col string, v interface{}) string
@@ -128,7 +129,8 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // Float fields are decoded to NaN if a string value is 'NaN'. This check
 // is case insensitive.
 //
-// Interface fields are decoded to strings.
+// Interface fields are decoded to strings unless they contain settable pointer
+// value.
 func (d *Decoder) Decode(v interface{}) (err error) {
 	d.record, err = d.r.Read()
 	if err != nil {
@@ -213,7 +215,13 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
 
 		s := record[f.columnIndex]
 		if d.Map != nil && f.zero != nil {
-			s = d.Map(s, d.header[f.columnIndex], f.zero)
+			zero := f.zero
+			if fv.Kind() == reflect.Interface && !fv.IsNil() {
+				if v := walkValue(fv); v.CanSet() {
+					zero = reflect.Zero(v.Type()).Interface()
+				}
+			}
+			s = d.Map(s, d.header[f.columnIndex], zero)
 		}
 
 		if err := f.decodeFunc(s, fv); err != nil {

@@ -95,14 +95,29 @@ func decodePtr(typ reflect.Type) (decodeFunc, error) {
 }
 
 func decodeInterface(s string, v reflect.Value) error {
-	if v.NumMethod() == 0 {
+	if v.NumMethod() != 0 {
+		return &UnmarshalTypeError{
+			Value: s,
+			Type:  v.Type(),
+		}
+	}
+
+	if v.IsNil() {
 		v.Set(reflect.ValueOf(s))
 		return nil
 	}
-	return &UnmarshalTypeError{
-		Value: s,
-		Type:  v.Type(),
+
+	el := walkValue(v)
+	if !el.CanSet() {
+		v.Set(reflect.ValueOf(s))
+		return nil
 	}
+
+	fn, err := decodeFn(el.Type())
+	if err != nil {
+		return err
+	}
+	return fn(s, el)
 }
 
 func decodeBytes(s string, v reflect.Value) error {

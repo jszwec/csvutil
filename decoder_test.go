@@ -302,6 +302,8 @@ func pstring(s string) *string              { return &s }
 func pbool(b bool) *bool                    { return &b }
 func pinterface(v interface{}) *interface{} { return &v }
 
+func ppint(n int) **int { p := &n; return &p }
+
 func TestDecoder(t *testing.T) {
 	fixtures := []struct {
 		desc           string
@@ -637,6 +639,96 @@ string,"{""key"":""value""}"
 			unused:         []int{1},
 		},
 		{
+			desc: "initialized interface",
+			in:   "Int,Float,String,Bool,Unmarshaler,NilPtr\n10,3.14,string,true,lol,nil",
+			out: &struct{ Int, Float, String, Bool, Unmarshaler, NilPtr interface{} }{
+				Int:         int(0),
+				Float:       float64(0),
+				String:      "",
+				Bool:        false,
+				Unmarshaler: CSVUnmarshaler{},
+				NilPtr:      (*int)(nil),
+			},
+			expected: &struct{ Int, Float, String, Bool, Unmarshaler, NilPtr interface{} }{
+				Int:         "10",
+				Float:       "3.14",
+				String:      "string",
+				Bool:        "true",
+				Unmarshaler: "lol",
+				NilPtr:      "nil",
+			},
+			expectedRecord: []string{"10", "3.14", "string", "true", "lol", "nil"},
+			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler", "NilPtr"},
+		},
+		{
+			desc: "initialized ptr interface",
+			in:   "Int,Float,String,Bool,Unmarshaler,DoublePtr\n10,3.14,string,true,lol,100",
+			out: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr interface{} }{
+				Int:         pint(0),
+				Float:       pfloat64(0),
+				String:      pstring(""),
+				Bool:        pbool(false),
+				Unmarshaler: &CSVUnmarshaler{},
+				DoublePtr:   ppint(0),
+			},
+			expected: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr interface{} }{
+				Int:    pint(10),
+				Float:  pfloat64(3.14),
+				String: pstring("string"),
+				Bool:   pbool(true),
+				Unmarshaler: &CSVUnmarshaler{
+					String: "unmarshalCSV:lol",
+				},
+				DoublePtr: ppint(100),
+			},
+			expectedRecord: []string{"10", "3.14", "string", "true", "lol", "100"},
+			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler", "DoublePtr"},
+		},
+		{
+			desc: "initialized ptr interface fields",
+			in:   "Int,Float,String,Bool,Unmarshaler\n10,3.14,string,true,lol",
+			out: &struct{ Int, Float, String, Bool, Unmarshaler *interface{} }{
+				Int:         pinterface(int(0)),
+				Float:       pinterface(float64(0)),
+				String:      pinterface(""),
+				Bool:        pinterface(false),
+				Unmarshaler: pinterface(CSVUnmarshaler{}),
+			},
+			expected: &struct{ Int, Float, String, Bool, Unmarshaler *interface{} }{
+				Int:         pinterface("10"),
+				Float:       pinterface("3.14"),
+				String:      pinterface("string"),
+				Bool:        pinterface("true"),
+				Unmarshaler: pinterface("lol"),
+			},
+			expectedRecord: []string{"10", "3.14", "string", "true", "lol"},
+			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler"},
+		},
+		{
+			desc: "initialized ptr interface fields to ptr values",
+			in:   "Int,Float,String,Bool,Unmarshaler,DoublePtr\n10,3.14,string,true,lol,30",
+			out: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr *interface{} }{
+				Int:         pinterface(pint(0)),
+				Float:       pinterface(pfloat64(0)),
+				String:      pinterface(pstring("")),
+				Bool:        pinterface(pbool(false)),
+				Unmarshaler: pinterface(&CSVUnmarshaler{}),
+				DoublePtr:   pinterface(ppint(0)),
+			},
+			expected: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr *interface{} }{
+				Int:    pinterface(pint(10)),
+				Float:  pinterface(pfloat64(3.14)),
+				String: pinterface(pstring("string")),
+				Bool:   pinterface(pbool(true)),
+				Unmarshaler: pinterface(&CSVUnmarshaler{
+					String: "unmarshalCSV:lol",
+				}),
+				DoublePtr: pinterface(ppint(30)),
+			},
+			expectedRecord: []string{"10", "3.14", "string", "true", "lol", "30"},
+			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler", "DoublePtr"},
+		},
+		{
 			desc: "unsupported type",
 			in:   "string,int\ns,1",
 			out:  &TypeWithInvalidField{},
@@ -719,6 +811,18 @@ string,"{""key"":""value""}"
 			in:   "Binary\n1",
 			out:  &struct{ Binary []byte }{},
 			err:  base64.CorruptInputError(0),
+		},
+		{
+			desc: "invalid int under interface value",
+			in:   "Int,Foo\n,",
+			out:  &struct{ Int interface{} }{Int: pint(0)},
+			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(int(0))},
+		},
+		{
+			desc: "unsupported type under interface value",
+			in:   "Invalid\n1",
+			out:  &struct{ Invalid interface{} }{Invalid: &InvalidType{}},
+			err:  &UnsupportedTypeError{Type: reflect.TypeOf(InvalidType{})},
 		},
 	}
 
@@ -1036,11 +1140,14 @@ s,1,3.14,true
 				if _, ok := v.(string); ok {
 					return strings.ToUpper(field)
 				}
+				if _, ok := v.(int); ok {
+					return "100"
+				}
 				t.Fatalf("expected v to be a string, was %T", v)
 				return field
 			}
 
-			data := []byte("F1,F2,F3\na,b,c")
+			data := []byte("F1,F2,F3,F4,F5,F6\na,b,3,4,5,6")
 			dec, err := NewDecoder(newCSVReader(bytes.NewReader(data)))
 			if err != nil {
 				t.Fatalf("want err=nil; got %v", err)
@@ -1051,8 +1158,14 @@ s,1,3.14,true
 				F1 interface{}
 				F2 *interface{}
 				F3 interface{}
+				F4 interface{}
+				F5 interface{}
+				F6 *interface{}
 			}{
 				F3: int(0), // initialize an interface with a different type
+				F4: pint(0),
+				F5: (*int)(nil),
+				F6: pinterface(ppint(0)),
 			}
 			if err := dec.Decode(&out); err != nil {
 				t.Errorf("want err=nil; got %v", err)
@@ -1064,8 +1177,30 @@ s,1,3.14,true
 			if *out.F2 != "B" {
 				t.Errorf("expected F2=B got: %v", *out.F2)
 			}
-			if out.F3 != "C" {
-				t.Errorf("expected F3=A got: %v", out.F3)
+			if out.F3 != "3" {
+				t.Errorf("expected F3=\"3\" got: %v", out.F3)
+			}
+
+			f4, ok := out.F4.(*int)
+			if !ok || f4 == nil {
+				t.Error("expected F4 to be non nil int ptr")
+				return
+			}
+			if *f4 != 100 {
+				t.Errorf("expected F4=100 got: %v", f4)
+			}
+
+			if out.F5 != "5" {
+				t.Errorf("expected F5=\"5\" got: %v", out.F5)
+			}
+
+			f6, ok := (*out.F6).(**int)
+			if !ok || f4 == nil {
+				t.Error("expected F6 to be non nil int ptr")
+				return
+			}
+			if **f6 != 100 {
+				t.Errorf("expected F4=100 got: %v", f6)
 			}
 		})
 
