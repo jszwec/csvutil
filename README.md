@@ -32,6 +32,7 @@ Index
 	5. [Decoder.Map - data normalization](#examples_decoder_map)
 	6. [Different separator/delimiter](#examples_different_separator)
 	7. [Decoder and interface values](#examples_decoder_interface_values)
+	8. [Custom time.Time format](#examples_time_format)
 2. [Performance](#performance)
 	1. [Unmarshal](#performance_unmarshal)
 	2. [Marshal](#performance_marshal)
@@ -45,24 +46,29 @@ Nice and easy Unmarshal is using the std csv.Reader with its default options. Us
 
 ```go
 	var csvInput = []byte(`
-name,age
-jacek,26
-john,27`,
+name,age,CreatedAt
+jacek,26,2012-04-01T15:00:00Z
+john,,0001-01-01T00:00:00Z`,
 	)
 
 	type User struct {
-		Name string `csv:"name"`
-		Age  int    `csv:"age"`
+		Name      string `csv:"name"`
+		Age       int    `csv:"age,omitempty"`
+		CreatedAt time.Time
 	}
 
 	var users []User
 	if err := csvutil.Unmarshal(csvInput, &users); err != nil {
 		fmt.Println("error:", err)
 	}
-	fmt.Printf("%+v", users)
+
+	for _, u := range users {
+		fmt.Printf("%+v\n", u)
+	}
 
 	// Output:
-	// [{Name:jacek Age:26} {Name:john Age:27}]
+	// {Name:jacek Age:26 CreatedAt:2012-04-01 15:00:00 +0000 UTC}
+	// {Name:john Age:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC}
 ```
 
 ### Marshal <a name="examples_marshal"></a>
@@ -78,13 +84,21 @@ Marshal is using the std csv.Writer with its default options. Use [Encoder](http
 	type User struct {
 		Name string
 		Address
-		Age int `csv:"age,omitempty"`
+		Age       int `csv:"age,omitempty"`
+		CreatedAt time.Time
 	}
 
 	users := []User{
-		{Name: "John", Address: Address{"Boston", "USA"}, Age: 26},
-		{Name: "Bob", Address: Address{"LA", "USA"}, Age: 27},
-		{Name: "Alice", Address: Address{"SF", "USA"}},
+		{
+			Name:      "John",
+			Address:   Address{"Boston", "USA"},
+			Age:       26,
+			CreatedAt: time.Date(2010, 6, 2, 12, 0, 0, 0, time.UTC),
+		},
+		{
+			Name:    "Alice",
+			Address: Address{"SF", "USA"},
+		},
 	}
 
 	b, err := csvutil.Marshal(users)
@@ -94,10 +108,9 @@ Marshal is using the std csv.Writer with its default options. Use [Encoder](http
 	fmt.Println(string(b))
 
 	// Output:
-	// Name,City,Country,age
-	// John,Boston,USA,26
-	// Bob,LA,USA,27
-	// Alice,SF,USA,
+	// Name,City,Country,age,CreatedAt
+	// John,Boston,USA,26,2010-06-02T12:00:00Z
+	// Alice,SF,USA,,0001-01-01T00:00:00Z
 ```
 
 ### Unmarshal and metadata <a name="examples_unmarshal_and_metadata"></a>
@@ -352,6 +365,33 @@ int,10
 	// Output:
 	// value_type: string; value: (string) string_value
 	// value_type: int; value: (*int) 10
+}
+```
+
+### Custom time.Time format <a name="examples_time_format"></a>
+
+Type [time.Time](https://golang.org/pkg/time/#Time) can be used as is in the struct fields by both Decoder and Encoder
+due to the fact that both have builtin support for [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) and [encoding.TextMarshaler](https://golang.org/pkg/encoding/#TextMarshaler). This means that by default
+Time has a specific format; look at [MarshalText](https://golang.org/pkg/time/#Time.MarshalText) and [UnmarshalText](https://golang.org/pkg/time/#Time.UnmarshalText). This example shows how to override it.
+```go
+type Time struct {
+	time.Time
+}
+
+const format = "2006/01/02 15:04:05"
+
+func (t Time) MarshalCSV() ([]byte, error) {
+	var b [len(format)]byte
+	return t.AppendFormat(b[:0], format), nil
+}
+
+func (t *Time) UnmarshalCSV(data []byte) error {
+	tt, err := time.Parse(format, string(data))
+	if err != nil {
+		return err
+	}
+	*t = Time{Time: tt}
+	return nil
 }
 ```
 
