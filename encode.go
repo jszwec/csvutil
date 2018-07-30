@@ -20,7 +20,7 @@ func encodeString(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, erro
 }
 
 func encodeInt() encodeFunc {
-	b := [64]byte{}
+	var b [64]byte
 	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
 		n := v.Int()
 		if n == 0 && omitempty {
@@ -31,7 +31,7 @@ func encodeInt() encodeFunc {
 }
 
 func encodeUint() encodeFunc {
-	b := [64]byte{}
+	var b [64]byte
 	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
 		n := v.Uint()
 		if n == 0 && omitempty {
@@ -43,7 +43,7 @@ func encodeUint() encodeFunc {
 
 func encodeFloat(typ reflect.Type) encodeFunc {
 	bits := typ.Bits()
-	b := [64]byte{}
+	var b [64]byte
 	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
 		f := v.Float()
 		if f == 0 && omitempty {
@@ -54,7 +54,7 @@ func encodeFloat(typ reflect.Type) encodeFunc {
 }
 
 func encodeBool() encodeFunc {
-	b := [5]byte{} // 'true' or 'false'
+	var b [5]byte // 'true' or 'false'
 	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
 		t := v.Bool()
 		if !t && omitempty {

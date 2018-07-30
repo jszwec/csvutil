@@ -11,47 +11,37 @@ type encField struct {
 }
 
 type encCache struct {
-	typeKey typeKey
-	buf     bytes.Buffer
-	cache   []encField
-	index   []int
-	record  []string
+	buf    bytes.Buffer
+	fields []encField
+	index  []int
+	record []string
 }
 
-func (c *encCache) fields(k typeKey) ([]encField, error) {
-	if c.typeKey != k {
-		fields := cachedFields(k)
-		encFields := make([]encField, len(fields))
+func newEncCache(k typeKey) (*encCache, error) {
+	fields := cachedFields(k)
+	encFields := make([]encField, len(fields))
 
-		for i, f := range fields {
-			fn, err := encodeFn(f.typ)
-			if err != nil {
-				return nil, err
-			}
-
-			encFields[i] = encField{
-				field:      f,
-				encodeFunc: fn,
-			}
+	for i, f := range fields {
+		fn, err := encodeFn(f.typ)
+		if err != nil {
+			return nil, err
 		}
-		c.cache, c.typeKey = encFields, k
+
+		encFields[i] = encField{
+			field:      f,
+			encodeFunc: fn,
+		}
 	}
-	return c.cache, nil
+	return &encCache{
+		fields: encFields,
+		index:  make([]int, len(encFields)),
+		record: make([]string, len(encFields)),
+	}, nil
 }
 
-func (c *encCache) reset(fieldsLen int) {
+func (c *encCache) Get() ([]encField, *bytes.Buffer, []int, []string) {
 	c.buf.Reset()
-
-	if fieldsLen != len(c.index) {
-		c.index = make([]int, fieldsLen)
-		c.record = make([]string, fieldsLen)
-		return
-	}
-
-	for i := range c.index {
-		c.index[i] = 0
-		c.record[i] = ""
-	}
+	return c.fields, &c.buf, c.index, c.record
 }
 
 // Encoder writes structs CSV representations to the output stream.
@@ -65,8 +55,9 @@ type Encoder struct {
 	AutoHeader bool
 
 	w        Writer
-	cache    encCache
+	c        *encCache
 	noHeader bool
+	typeKey  typeKey
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -182,37 +173,34 @@ func (e *Encoder) encode(v reflect.Value) error {
 	return e.marshal(v)
 }
 
-func (e *Encoder) encodeHeader(typ reflect.Type) (err error) {
-	defer func() {
-		if err == nil {
-			e.noHeader = false
-		}
-	}()
-
-	fields, err := e.fields(typ)
+func (e *Encoder) encodeHeader(typ reflect.Type) error {
+	fields, _, _, record, err := e.cache(typ)
 	if err != nil {
 		return err
 	}
 
-	e.cache.reset(len(fields))
 	for i, f := range fields {
-		e.cache.record[i] = f.tag.name
+		record[i] = f.tag.name
 	}
-	return e.w.Write(e.cache.record)
+
+	if err := e.w.Write(record); err != nil {
+		return err
+	}
+
+	e.noHeader = false
+	return nil
 }
 
 func (e *Encoder) marshal(v reflect.Value) error {
-	fields, err := e.fields(v.Type())
+	fields, buf, index, record, err := e.cache(v.Type())
 	if err != nil {
 		return err
 	}
-
-	e.cache.reset(len(fields))
-	buf, index, record := &e.cache.buf, e.cache.index, e.cache.record
 
 	for i, f := range fields {
 		v := walkIndex(v, f.index)
 		if !v.IsValid() {
+			index[i] = 0
 			continue
 		}
 
@@ -238,8 +226,16 @@ func (e *Encoder) tag() string {
 	return e.Tag
 }
 
-func (e *Encoder) fields(typ reflect.Type) ([]encField, error) {
-	return e.cache.fields(typeKey{e.tag(), typ})
+func (e *Encoder) cache(typ reflect.Type) ([]encField, *bytes.Buffer, []int, []string, error) {
+	if k := (typeKey{e.tag(), typ}); k != e.typeKey {
+		c, err := newEncCache(k)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		e.c, e.typeKey = c, k
+	}
+	fields, buf, index, record := e.c.Get()
+	return fields, buf, index, record, nil
 }
 
 func walkIndex(v reflect.Value, index []int) reflect.Value {

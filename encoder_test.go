@@ -970,6 +970,30 @@ func TestEncoder(t *testing.T) {
 			t.Errorf("want %s; got %s", expected, buf.String())
 		}
 	})
+
+	t.Run("fail on type encoding without header", func(t *testing.T) {
+		var buf bytes.Buffer
+		w := csv.NewWriter(&buf)
+		enc := NewEncoder(w)
+		enc.AutoHeader = false
+
+		err := enc.Encode(struct {
+			Invalid InvalidType
+		}{})
+
+		expected := &UnsupportedTypeError{Type: reflect.TypeOf(InvalidType{})}
+		if !reflect.DeepEqual(err, expected) {
+			t.Errorf("want %v; got %v", expected, err)
+		}
+	})
+
+	t.Run("fail while writing header", func(t *testing.T) {
+		Error := errors.New("error")
+		enc := NewEncoder(failingWriter{Err: Error})
+		if err := enc.EncodeHeader(TypeA{}); err != Error {
+			t.Errorf("want %v; got %v", Error, err)
+		}
+	})
 }
 
 func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {
@@ -991,4 +1015,12 @@ func encodeCSV(t *testing.T, recs [][]string) string {
 		t.Fatalf("want err=nil; got %v", err)
 	}
 	return buf.String()
+}
+
+type failingWriter struct {
+	Err error
+}
+
+func (w failingWriter) Write([]string) error {
+	return w.Err
 }
