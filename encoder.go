@@ -140,16 +140,10 @@ func (e *Encoder) Encode(v interface{}) error {
 // directly to the output stream. Look at Header documentation for the exact
 // header encoding rules.
 func (e *Encoder) EncodeHeader(v interface{}) error {
-	val := reflect.ValueOf(v)
-	if !val.IsValid() {
-		return &UnsupportedTypeError{}
+	typ, err := valueType(v)
+	if err != nil {
+		return err
 	}
-
-	typ := walkType(val.Type())
-	if typ.Kind() != reflect.Struct {
-		return &UnsupportedTypeError{Type: typ}
-	}
-
 	return e.encodeHeader(typ)
 }
 

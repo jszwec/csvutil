@@ -161,14 +161,9 @@ func countRecords(s []byte) (n int) {
 // Header will return UnsupportedTypeError if the provided value is nil or is
 // not a struct.
 func Header(v interface{}, tag string) ([]string, error) {
-	val := reflect.ValueOf(v)
-	if !val.IsValid() {
-		return nil, &UnsupportedTypeError{}
-	}
-
-	typ := walkType(val.Type())
-	if typ.Kind() != reflect.Struct {
-		return nil, &UnsupportedTypeError{Type: typ}
+	typ, err := valueType(v)
+	if err != nil {
+		return nil, err
 	}
 
 	if tag == "" {
@@ -181,4 +176,31 @@ func Header(v interface{}, tag string) ([]string, error) {
 		h[i] = f.tag.name
 	}
 	return h, nil
+}
+
+func valueType(v interface{}) (reflect.Type, error) {
+	val := reflect.ValueOf(v)
+	if !val.IsValid() {
+		return nil, &UnsupportedTypeError{}
+	}
+
+loop:
+	for {
+		switch val.Kind() {
+		case reflect.Ptr, reflect.Interface:
+			el := val.Elem()
+			if !el.IsValid() {
+				break loop
+			}
+			val = el
+		default:
+			break loop
+		}
+	}
+
+	typ := walkType(val.Type())
+	if typ.Kind() != reflect.Struct {
+		return nil, &UnsupportedTypeError{Type: typ}
+	}
+	return typ, nil
 }
