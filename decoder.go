@@ -224,7 +224,7 @@ func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
 			s = d.Map(s, d.header[f.columnIndex], zero)
 		}
 
-		if err := f.decodeFunc(s, fv); err != nil {
+		if err := f.decodeFunc(s, fv); err != nil && !f.tag.ignoreCustom {
 			return err
 		}
 	}
@@ -247,7 +247,7 @@ func (d *Decoder) fields(k typeKey) ([]decField, error) {
 		}
 
 		fn, err := decodeFn(f.typ)
-		if err != nil {
+		if err != nil && ! f.tag.ignoreCustom {
 			return nil, err
 		}
 
