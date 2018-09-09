@@ -74,7 +74,7 @@ func encodeInterface(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, e
 	if err != nil {
 		return 0, err
 	}
-	return enc(v, buf, omitempty)
+	return enc(walkPtr(v), buf, omitempty)
 }
 
 func encodePtrMarshaler(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {

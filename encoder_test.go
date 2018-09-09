@@ -524,6 +524,74 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			desc: "encode interface values",
+			in: []interface{}{
+				struct {
+					V interface{}
+				}{1},
+				struct {
+					V interface{}
+				}{pint(10)},
+				struct {
+					V interface{}
+				}{ppint(100)},
+				struct {
+					V interface{}
+				}{pppint(1000)},
+				struct {
+					V *interface{}
+				}{pinterface(ppint(10000))},
+				struct {
+					V *interface{}
+				}{func() *interface{} {
+					var v interface{} = pppint(100000)
+					var vv interface{} = v
+					return &vv
+				}()},
+				struct {
+					V interface{}
+				}{func() interface{} {
+					var v interface{} = &CSVMarshaler{}
+					var vv interface{} = v
+					return &vv
+				}()},
+				struct {
+					V interface{}
+				}{func() interface{} {
+					var v interface{} = CSVMarshaler{}
+					var vv interface{} = v
+					return &vv
+				}()},
+				struct {
+					V interface{}
+				}{func() interface{} {
+					var v interface{} = &CSVMarshaler{}
+					var vv interface{} = v
+					return vv
+				}()},
+				struct {
+					V interface{}
+				}{func() interface{} {
+					var v interface{}
+					var vv interface{} = v
+					return &vv
+				}()},
+			},
+			out: [][]string{
+				{"V"},
+				{"1"},
+				{"10"},
+				{"100"},
+				{"1000"},
+				{"10000"},
+				{"100000"},
+				{"csvmarshaler"},
+				{"csvmarshaler"},
+				{"csvmarshaler"},
+				{""},
+			},
+		},
+		{
 			desc: "encode NaN",
 			in: []interface{}{
 				struct {

@@ -302,7 +302,8 @@ func pstring(s string) *string              { return &s }
 func pbool(b bool) *bool                    { return &b }
 func pinterface(v interface{}) *interface{} { return &v }
 
-func ppint(n int) **int { p := &n; return &p }
+func ppint(n int) **int   { p := pint(n); return &p }
+func pppint(n int) ***int { p := ppint(n); return &p }
 
 func TestDecoder(t *testing.T) {
 	fixtures := []struct {
