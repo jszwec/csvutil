@@ -9,11 +9,11 @@ go:
 os:
  - linux
  - osx
- 
+
 script:
  - go vet ./...
  - go install ./...
- - go test -v ./... -coverprofile=coverage.txt -covermode=atomic
- 
+ - go test -race -v ./... -coverprofile=coverage.txt -covermode=atomic
+
 after_success:
   - bash <(curl -s https://codecov.io/bash)

@@ -146,38 +146,38 @@ type TypeE struct {
 }
 
 type TypeF struct {
-	Int      int          `csv:"int"`
-	Pint     *int         `csv:"pint"`
-	Int8     int8         `csv:"int8"`
-	Pint8    *int8        `csv:"pint8"`
-	Int16    int16        `csv:"int16"`
-	Pint16   *int16       `csv:"pint16"`
-	Int32    int32        `csv:"int32"`
-	Pint32   *int32       `csv:"pint32"`
-	Int64    int64        `csv:"int64"`
-	Pint64   *int64       `csv:"pint64"`
-	UInt     uint         `csv:"uint"`
-	Puint    *uint        `csv:"puint"`
-	Uint8    uint8        `csv:"uint8"`
-	Puint8   *uint8       `csv:"puint8"`
-	Uint16   uint16       `csv:"uint16"`
-	Puint16  *uint16      `csv:"puint16"`
-	Uint32   uint32       `csv:"uint32"`
-	Puint32  *uint32      `csv:"puint32"`
-	Uint64   uint64       `csv:"uint64"`
-	Puint64  *uint64      `csv:"puint64"`
-	Float32  float32      `csv:"float32"`
-	Pfloat32 *float32     `csv:"pfloat32"`
-	Float64  float64      `csv:"float64"`
-	Pfloat64 *float64     `csv:"pfloat64"`
-	String   string       `csv:"string"`
-	PString  *string      `csv:"pstring"`
-	Bool     bool         `csv:"bool"`
-	Pbool    *bool        `csv:"pbool"`
-	V        interface{}  `csv:"interface"`
-	Pv       *interface{} `csv:"pinterface"`
-	Binary   []byte       `csv:"binary"`
-	PBinary  *[]byte      `csv:"pbinary"`
+	Int      int          `csv:"int" custom:"int"`
+	Pint     *int         `csv:"pint" custom:"pint"`
+	Int8     int8         `csv:"int8" custom:"int8"`
+	Pint8    *int8        `csv:"pint8" custom:"pint8"`
+	Int16    int16        `csv:"int16" custom:"int16"`
+	Pint16   *int16       `csv:"pint16" custom:"pint16"`
+	Int32    int32        `csv:"int32" custom:"int32"`
+	Pint32   *int32       `csv:"pint32" custom:"pint32"`
+	Int64    int64        `csv:"int64" custom:"int64"`
+	Pint64   *int64       `csv:"pint64" custom:"pint64"`
+	UInt     uint         `csv:"uint" custom:"uint"`
+	Puint    *uint        `csv:"puint" custom:"puint"`
+	Uint8    uint8        `csv:"uint8" custom:"uint8"`
+	Puint8   *uint8       `csv:"puint8" custom:"puint8"`
+	Uint16   uint16       `csv:"uint16" custom:"uint16"`
+	Puint16  *uint16      `csv:"puint16" custom:"puint16"`
+	Uint32   uint32       `csv:"uint32" custom:"uint32"`
+	Puint32  *uint32      `csv:"puint32" custom:"puint32"`
+	Uint64   uint64       `csv:"uint64" custom:"uint64"`
+	Puint64  *uint64      `csv:"puint64" custom:"puint64"`
+	Float32  float32      `csv:"float32" custom:"float32"`
+	Pfloat32 *float32     `csv:"pfloat32" custom:"pfloat32"`
+	Float64  float64      `csv:"float64" custom:"float64"`
+	Pfloat64 *float64     `csv:"pfloat64" custom:"pfloat64"`
+	String   string       `csv:"string" custom:"string"`
+	PString  *string      `csv:"pstring" custom:"pstring"`
+	Bool     bool         `csv:"bool" custom:"bool"`
+	Pbool    *bool        `csv:"pbool" custom:"pbool"`
+	V        interface{}  `csv:"interface" custom:"interface"`
+	Pv       *interface{} `csv:"pinterface" custom:"pinterface"`
+	Binary   []byte       `csv:"binary" custom:"binary"`
+	PBinary  *[]byte      `csv:"pbinary" custom:"pbinary"`
 }
 
 type TypeG struct {
