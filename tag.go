@@ -6,10 +6,11 @@ import (
 )
 
 type tag struct {
-	name      string
-	empty     bool
-	omitEmpty bool
-	ignore    bool
+	name         string
+	empty        bool
+	omitEmpty    bool
+	ignore       bool
+	ignoreCustom bool
 }
 
 func parseTag(tagname string, field reflect.StructField) (t tag) {
@@ -23,6 +24,11 @@ func parseTag(tagname string, field reflect.StructField) (t tag) {
 	case "-":
 		t.ignore = true
 		return
+	case "!":
+		t.ignoreCustom = true
+		if len(tags) == 2 {
+			t.name = tags[1]
+		}
 	case "":
 		t.name = field.Name
 	default:

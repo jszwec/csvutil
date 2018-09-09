@@ -157,6 +157,10 @@ func decodeFn(typ reflect.Type) (decodeFunc, error) {
 			return decodeBytes, nil
 		}
 	}
+	//return nil, &UnsupportedTypeError{Type: typ}
+	return emptyFunc, &UnsupportedTypeError{Type: typ}
+}
 
-	return nil, &UnsupportedTypeError{Type: typ}
+func emptyFunc(s string, v reflect.Value) error {
+	return nil
 }
