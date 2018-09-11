@@ -1,9 +1,10 @@
 package csvutil
 
 import (
-	"bytes"
 	"reflect"
 )
+
+const defaultBufSize = 4096
 
 type encField struct {
 	field
@@ -11,8 +12,8 @@ type encField struct {
 }
 
 type encCache struct {
-	buf    bytes.Buffer
 	fields []encField
+	buf    []byte
 	index  []int
 	record []string
 }
@@ -34,14 +35,10 @@ func newEncCache(k typeKey) (*encCache, error) {
 	}
 	return &encCache{
 		fields: encFields,
+		buf:    make([]byte, 0, defaultBufSize),
 		index:  make([]int, len(encFields)),
 		record: make([]string, len(encFields)),
 	}, nil
-}
-
-func (c *encCache) Get() ([]encField, *bytes.Buffer, []int, []string) {
-	c.buf.Reset()
-	return c.fields, &c.buf, c.index, c.record
 }
 
 // Encoder writes structs CSV representations to the output stream.
@@ -198,17 +195,18 @@ func (e *Encoder) marshal(v reflect.Value) error {
 			continue
 		}
 
-		n, err := f.encodeFunc(v, buf, f.tag.omitEmpty)
+		b, err := f.encodeFunc(buf, v, f.tag.omitEmpty)
 		if err != nil {
 			return err
 		}
-		index[i] = n
+		index[i], buf = len(b)-len(buf), b
 	}
 
-	out := buf.String()
+	out := string(buf)
 	for i, n := range index {
 		record[i], out = out[:n], out[n:]
 	}
+	e.c.buf = buf[:0]
 
 	return e.w.Write(record)
 }
@@ -220,7 +218,7 @@ func (e *Encoder) tag() string {
 	return e.Tag
 }
 
-func (e *Encoder) cache(typ reflect.Type) ([]encField, *bytes.Buffer, []int, []string, error) {
+func (e *Encoder) cache(typ reflect.Type) ([]encField, []byte, []int, []string, error) {
 	if k := (typeKey{e.tag(), typ}); k != e.typeKey {
 		c, err := newEncCache(k)
 		if err != nil {
@@ -228,8 +226,7 @@ func (e *Encoder) cache(typ reflect.Type) ([]encField, *bytes.Buffer, []int, []s
 		}
 		e.c, e.typeKey = c, k
 	}
-	fields, buf, index, record := e.c.Get()
-	return fields, buf, index, record, nil
+	return e.c.fields, e.c.buf[:0], e.c.index, e.c.record, nil
 }
 
 func walkIndex(v reflect.Value, index []int) reflect.Value {

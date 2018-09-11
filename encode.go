@@ -1,7 +1,6 @@
 package csvutil
 
 import (
-	"bytes"
 	"encoding"
 	"encoding/base64"
 	"reflect"
@@ -9,102 +8,96 @@ import (
 )
 
 var (
-	textMarshaler = reflect.TypeOf(new(encoding.TextMarshaler)).Elem()
-	csvMarshaler  = reflect.TypeOf(new(Marshaler)).Elem()
+	textMarshaler = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+	csvMarshaler  = reflect.TypeOf((*Marshaler)(nil)).Elem()
 )
 
-type encodeFunc func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error)
+var (
+	encodeFloat32 = encodeFloatN(32)
+	encodeFloat64 = encodeFloatN(64)
+)
 
-func encodeString(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
-	return buf.WriteString(v.String())
+type encodeFunc func(buf []byte, v reflect.Value, omitempty bool) ([]byte, error)
+
+func encodeString(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
+	return append(buf, v.String()...), nil
 }
 
-func encodeInt() encodeFunc {
-	var b [64]byte
-	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
-		n := v.Int()
-		if n == 0 && omitempty {
-			return 0, nil
-		}
-		return buf.Write(strconv.AppendInt(b[:0], n, 10))
+func encodeInt(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
+	n := v.Int()
+	if n == 0 && omitempty {
+		return buf, nil
 	}
+	return strconv.AppendInt(buf, n, 10), nil
 }
 
-func encodeUint() encodeFunc {
-	var b [64]byte
-	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
-		n := v.Uint()
-		if n == 0 && omitempty {
-			return 0, nil
-		}
-		return buf.Write(strconv.AppendUint(b[:0], n, 10))
+func encodeUint(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
+	n := v.Uint()
+	if n == 0 && omitempty {
+		return buf, nil
 	}
+	return strconv.AppendUint(buf, n, 10), nil
 }
 
-func encodeFloat(typ reflect.Type) encodeFunc {
-	bits := typ.Bits()
-	var b [64]byte
-	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
+func encodeFloatN(bits int) encodeFunc {
+	return func(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
 		f := v.Float()
 		if f == 0 && omitempty {
-			return 0, nil
+			return buf, nil
 		}
-		return buf.Write(strconv.AppendFloat(b[:0], f, 'G', -1, bits))
+		return strconv.AppendFloat(buf, f, 'G', -1, bits), nil
 	}
 }
 
-func encodeBool() encodeFunc {
-	var b [5]byte // 'true' or 'false'
-	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
-		t := v.Bool()
-		if !t && omitempty {
-			return 0, nil
-		}
-		return buf.Write(strconv.AppendBool(b[:0], t))
+func encodeBool(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
+	t := v.Bool()
+	if !t && omitempty {
+		return buf, nil
 	}
+	return strconv.AppendBool(buf, t), nil
 }
 
-func encodeInterface(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
+func encodeInterface(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
 	if !v.IsValid() || v.IsNil() || !v.Elem().IsValid() {
-		return 0, nil
+		return buf, nil
 	}
 
 	v = v.Elem()
 	enc, err := encodeFn(v.Type())
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return enc(walkPtr(v), buf, omitempty)
+	return enc(buf, walkPtr(v), omitempty)
 }
 
-func encodePtrMarshaler(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
+func encodePtrMarshaler(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
 	if v.CanAddr() {
-		return encodeMarshaler(v.Addr(), buf, omitempty)
+		return encodeMarshaler(buf, v.Addr(), omitempty)
 	}
-	return 0, nil
+	return buf, nil
 }
 
-func encodeTextMarshaler(v reflect.Value, buf *bytes.Buffer, _ bool) (int, error) {
+func encodeTextMarshaler(buf []byte, v reflect.Value, _ bool) ([]byte, error) {
 	b, err := v.Interface().(encoding.TextMarshaler).MarshalText()
 	if err != nil {
-		return 0, &MarshalerError{Type: v.Type(), MarshalerType: "MarshalText", Err: err}
+		return nil, &MarshalerError{Type: v.Type(), MarshalerType: "MarshalText", Err: err}
 	}
-	return buf.Write(b)
+	return append(buf, b...), nil
 }
 
-func encodePtrTextMarshaler(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
+func encodePtrTextMarshaler(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
 	if v.CanAddr() {
-		return encodeTextMarshaler(v.Addr(), buf, omitempty)
+		return encodeTextMarshaler(buf, v.Addr(), omitempty)
 	}
-	return 0, nil
+	return buf, nil
 }
 
-func encodeMarshaler(v reflect.Value, buf *bytes.Buffer, _ bool) (int, error) {
+func encodeMarshaler(buf []byte, v reflect.Value, _ bool) ([]byte, error) {
 	b, err := v.Interface().(Marshaler).MarshalCSV()
 	if err != nil {
-		return 0, &MarshalerError{Type: v.Type(), MarshalerType: "MarshalCSV", Err: err}
+		return nil, &MarshalerError{Type: v.Type(), MarshalerType: "MarshalCSV", Err: err}
 	}
-	return buf.Write(b)
+	return append(buf, b...), nil
 }
 
 func encodePtr(typ reflect.Type) (encodeFunc, error) {
@@ -112,17 +105,18 @@ func encodePtr(typ reflect.Type) (encodeFunc, error) {
 	if err != nil {
 		return nil, err
 	}
-	return func(v reflect.Value, buf *bytes.Buffer, omitempty bool) (int, error) {
-		return next(v, buf, omitempty)
+	return func(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
+		return next(buf, v, omitempty)
 	}, nil
 }
 
-func encodeBytes(v reflect.Value, buf *bytes.Buffer, _ bool) (int, error) {
-	b := v.Bytes()
-	w := base64.NewEncoder(base64.StdEncoding, buf)
-	w.Write(b)
-	w.Close()
-	return base64.StdEncoding.EncodedLen(len(b)), nil
+func encodeBytes(buf []byte, v reflect.Value, _ bool) ([]byte, error) {
+	data := v.Bytes()
+
+	l := len(buf)
+	buf = append(buf, make([]byte, base64.StdEncoding.EncodedLen(len(data)))...)
+	base64.StdEncoding.Encode(buf[l:], data)
+	return buf, nil
 }
 
 func encodeFn(typ reflect.Type) (encodeFunc, error) {
@@ -144,13 +138,15 @@ func encodeFn(typ reflect.Type) (encodeFunc, error) {
 	case reflect.String:
 		return encodeString, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return encodeInt(), nil
+		return encodeInt, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return encodeUint(), nil
-	case reflect.Float32, reflect.Float64:
-		return encodeFloat(typ), nil
+		return encodeUint, nil
+	case reflect.Float32:
+		return encodeFloat32, nil
+	case reflect.Float64:
+		return encodeFloat64, nil
 	case reflect.Bool:
-		return encodeBool(), nil
+		return encodeBool, nil
 	case reflect.Interface:
 		return encodeInterface, nil
 	case reflect.Ptr:
