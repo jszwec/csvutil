@@ -754,6 +754,12 @@ string,"{""key"":""value""}"
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(int(0))},
 		},
 		{
+			desc: "int overflow",
+			in:   "Int\n1024",
+			out:  &struct{ Int int8 }{},
+			err:  &UnmarshalTypeError{Value: "1024", Type: reflect.TypeOf(int8(0))},
+		},
+		{
 			desc: "invalid int pointer",
 			in:   "Int,Foo\n,",
 			out:  &struct{ Int *int }{},
@@ -772,10 +778,28 @@ string,"{""key"":""value""}"
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(uint(0))},
 		},
 		{
+			desc: "uint overflow",
+			in:   "Uint\n1024",
+			out:  &struct{ Uint uint8 }{},
+			err:  &UnmarshalTypeError{Value: "1024", Type: reflect.TypeOf(uint8(0))},
+		},
+		{
+			desc: "invalid uint pointer",
+			in:   "Uint\na",
+			out:  &struct{ Uint *uint }{},
+			err:  &UnmarshalTypeError{Value: "a", Type: reflect.TypeOf(uint(0))},
+		},
+		{
 			desc: "invalid float",
 			in:   "Float,Foo\n,",
 			out:  &struct{ Float float64 }{},
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(float64(0))},
+		},
+		{
+			desc: "invalid float pointer",
+			in:   "Float\na",
+			out:  &struct{ Float *float64 }{},
+			err:  &UnmarshalTypeError{Value: "a", Type: reflect.TypeOf(float64(0))},
 		},
 		{
 			desc: "invalid bool",

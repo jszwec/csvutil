@@ -8,8 +8,27 @@ import (
 )
 
 var (
-	textUnmarshaler = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
-	csvUnmarshaler  = reflect.TypeOf(new(Unmarshaler)).Elem()
+	textUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+	csvUnmarshaler  = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
+)
+
+var intDecoders = map[int]decodeFunc{
+	8:  decodeIntN(8),
+	16: decodeIntN(16),
+	32: decodeIntN(32),
+	64: decodeIntN(64),
+}
+
+var uintDecoders = map[int]decodeFunc{
+	8:  decodeUintN(8),
+	16: decodeUintN(16),
+	32: decodeUintN(32),
+	64: decodeUintN(64),
+}
+
+var (
+	decodeFloat32 = decodeFloatN(32)
+	decodeFloat64 = decodeFloatN(64)
 )
 
 type decodeFunc func(s string, v reflect.Value) error
@@ -19,8 +38,7 @@ func decodeString(s string, v reflect.Value) error {
 	return nil
 }
 
-func decodeInt(t reflect.Type) decodeFunc {
-	bits := t.Bits()
+func decodeIntN(bits int) decodeFunc {
 	return func(s string, v reflect.Value) error {
 		n, err := strconv.ParseInt(s, 10, bits)
 		if err != nil {
@@ -31,24 +49,22 @@ func decodeInt(t reflect.Type) decodeFunc {
 	}
 }
 
-func decodeUint(t reflect.Type) decodeFunc {
-	bits := t.Bits()
+func decodeUintN(bits int) decodeFunc {
 	return func(s string, v reflect.Value) error {
 		n, err := strconv.ParseUint(s, 10, bits)
 		if err != nil {
-			return &UnmarshalTypeError{Value: s, Type: t}
+			return &UnmarshalTypeError{Value: s, Type: v.Type()}
 		}
 		v.SetUint(n)
 		return nil
 	}
 }
 
-func decodeFloat(t reflect.Type) decodeFunc {
-	bits := t.Bits()
+func decodeFloatN(bits int) decodeFunc {
 	return func(s string, v reflect.Value) error {
 		n, err := strconv.ParseFloat(s, bits)
 		if err != nil {
-			return &UnmarshalTypeError{Value: s, Type: t}
+			return &UnmarshalTypeError{Value: s, Type: v.Type()}
 		}
 		v.SetFloat(n)
 		return nil
@@ -145,11 +161,13 @@ func decodeFn(typ reflect.Type) (decodeFunc, error) {
 	case reflect.String:
 		return decodeString, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return decodeInt(typ), nil
+		return intDecoders[typ.Bits()], nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return decodeUint(typ), nil
-	case reflect.Float32, reflect.Float64:
-		return decodeFloat(typ), nil
+		return uintDecoders[typ.Bits()], nil
+	case reflect.Float32:
+		return decodeFloat32, nil
+	case reflect.Float64:
+		return decodeFloat64, nil
 	case reflect.Bool:
 		return decodeBool, nil
 	case reflect.Slice:
