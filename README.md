@@ -5,10 +5,10 @@ csvutil [![GoDoc](https://godoc.org/github.com/jszwec/csvutil?status.svg)](http:
   <img style="float: right;" src="https://user-images.githubusercontent.com/3941256/33054906-52b4bc08-ce4a-11e7-9651-b70c5a47c921.png"/ width=200>
 </p>
 
-Package csvutil provides fast and idiomatic mapping between CSV and Go values.
+Package csvutil provides fast and idiomatic mapping between CSV and Go (golang) values.
 
 This package does not provide a CSV parser itself, it is based on the [Reader](https://godoc.org/github.com/jszwec/csvutil#Reader) and [Writer](https://godoc.org/github.com/jszwec/csvutil#Writer)
-interfaces which are implemented by eg. std csv package. This gives a possibility
+interfaces which are implemented by eg. std Go (golang) [csv package](https://golang.org/pkg/encoding/csv). This gives a possibility
 of choosing any other CSV writer or reader which may be more performant.
 
 Installation
@@ -33,6 +33,7 @@ Index
 	6. [Different separator/delimiter](#examples_different_separator)
 	7. [Decoder and interface values](#examples_decoder_interface_values)
 	8. [Custom time.Time format](#examples_time_format)
+	9. [Custom struct tags](#examples_struct_tags)
 2. [Performance](#performance)
 	1. [Unmarshal](#performance_unmarshal)
 	2. [Marshal](#performance_marshal)
@@ -42,7 +43,7 @@ Example <a name="examples"></a>
 
 ### Unmarshal <a name="examples_unmarshal"></a>
 
-Nice and easy Unmarshal is using the std csv.Reader with its default options. Use [Decoder](https://godoc.org/github.com/jszwec/csvutil#Decoder) for streaming and more advanced use cases.
+Nice and easy Unmarshal is using the Go std [csv.Reader](https://golang.org/pkg/encoding/csv/#Reader) with its default options. Use [Decoder](https://godoc.org/github.com/jszwec/csvutil#Decoder) for streaming and more advanced use cases.
 
 ```go
 	var csvInput = []byte(`
@@ -73,7 +74,7 @@ john,,0001-01-01T00:00:00Z`,
 
 ### Marshal <a name="examples_marshal"></a>
 
-Marshal is using the std csv.Writer with its default options. Use [Encoder](https://godoc.org/github.com/jszwec/csvutil#Encoder) for streaming or to use a different Writer.
+Marshal is using the Go std [csv.Writer](https://golang.org/pkg/encoding/csv/#Writer) with its default options. Use [Encoder](https://godoc.org/github.com/jszwec/csvutil#Encoder) for streaming or to use a different Writer.
 
 ```go
 	type Address struct {
@@ -393,6 +394,31 @@ func (t *Time) UnmarshalCSV(data []byte) error {
 	*t = Time{Time: tt}
 	return nil
 }
+```
+
+### Custom struct tags <a name="examples_struct_tags"></a>
+
+Like in other Go encoding packages struct field tags can be used to set
+custom names or options. By default encoders and decoders are looking at `csv` tag.
+However, this can be overriden by manually setting the Tag field.
+
+```go
+	type Foo struct {
+		Bar int `custom:"bar"`
+	}
+```
+
+```go
+	dec, err := csvutil.NewDecoder(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dec.Tag = "custom"
+```
+
+```go
+	enc := csvutil.NewEncoder(w)
+	enc.Tag = "custom"
 ```
 
 Performance
