@@ -269,7 +269,7 @@ Some files may use different value separators, for example TSV files would use `
 	enc := csvutil.NewEncoder(w)
 
 	for _, u := range users {
-		if err != enc.Encode(u); err != nil {
+		if err := enc.Encode(u); err != nil {
 			log.Fatal(err)
 		}
         }
