@@ -34,6 +34,7 @@ Index
 	7. [Decoder and interface values](#examples_decoder_interface_values)
 	8. [Custom time.Time format](#examples_time_format)
 	9. [Custom struct tags](#examples_struct_tags)
+	10. [Slice and Map fields](#examples_slice_and_map_field)
 2. [Performance](#performance)
 	1. [Unmarshal](#performance_unmarshal)
 	2. [Marshal](#performance_marshal)
@@ -419,6 +420,47 @@ However, this can be overriden by manually setting the Tag field.
 ```go
 	enc := csvutil.NewEncoder(w)
 	enc.Tag = "custom"
+```
+
+### Slice and Map fields <a name="examples_slice_and_map_field"></a>
+
+There is no default encoding/decoding support for slice and map fields because there is no CSV spec for such values.
+In such case, it is recommended to create a custom type alias and implement Marshaler and Unmarshaler interfaces.
+Please note that slice and map aliases behave differently than aliases of other types - there is no need for type casting.
+
+```go
+	type Strings []string
+
+	func (s Strings) MarshalCSV() ([]byte, error) {
+		return []byte(strings.Join(s, ",")), nil // strings.Join takes []string but it will also accept Strings
+	}
+
+	type StringMap map[string]string
+
+	func (sm StringMap) MarshalCSV() ([]byte, error) {
+		return []byte(fmt.Sprint(sm)), nil
+	}
+
+	func main() {
+		b, err := csvutil.Marshal([]struct {
+			Strings Strings   `csv:"strings"`
+			Map     StringMap `csv:"map"`
+		}{
+			{[]string{"a", "b"}, map[string]string{"a": "1"}}, // no type casting is required for slice and map aliases
+			{Strings{"c", "d"}, StringMap{"b": "1"}},
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("%s\n", b)
+
+		// Output:
+		// strings,map
+		// "a,b",map[a:1]
+		// "c,d",map[b:1]
+	}
 ```
 
 Performance
