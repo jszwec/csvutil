@@ -35,6 +35,7 @@ Index
 	8. [Custom time.Time format](#examples_time_format)
 	9. [Custom struct tags](#examples_struct_tags)
 	10. [Slice and Map fields](#examples_slice_and_map_field)
+	11. [Nested/Embedded structs](#examples_nested_structs)
 2. [Performance](#performance)
 	1. [Unmarshal](#performance_unmarshal)
 	2. [Marshal](#performance_marshal)
@@ -461,6 +462,65 @@ Please note that slice and map aliases behave differently than aliases of other 
 		// "a,b",map[a:1]
 		// "c,d",map[b:1]
 	}
+```
+
+### Nested/Embedded structs <a name="examples_nested_structs"></a>
+
+Both Encoder and Decoder support nested or embedded structs.
+
+Playground: https://play.golang.org/p/ZySjdVkovbf
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/jszwec/csvutil"
+)
+
+type Address struct {
+	Street string `csv:"street"`
+	City   string `csv:"city"`
+}
+
+type User struct {
+	Name string `csv:"name"`
+	Address
+}
+
+func main() {
+	users := []User{
+		{
+			Name: "John",
+			Address: Address{
+				Street: "Boylston",
+				City:   "Boston",
+			},
+		},
+	}
+
+	b, err := csvutil.Marshal(users)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%s\n", b)
+
+	var out []User
+	if err := csvutil.Unmarshal(b, &out); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%+v\n", out)
+
+	// Output:
+	//
+	// name,street,city
+	// John,Boylston,Boston
+	//
+	// [{Name:John Address:{Street:Boylston City:Boston}}]
+}
 ```
 
 Performance
