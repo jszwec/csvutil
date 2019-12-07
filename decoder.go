@@ -1,6 +1,7 @@
 package csvutil
 
 import (
+	"io"
 	"reflect"
 )
 
@@ -83,8 +84,9 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 	}, nil
 }
 
-// Decode reads the next string record from its input and stores it in the value
-// pointed to by v which must be a non-nil struct pointer.
+// Decode reads the next string record or records from its input and stores it
+// in the value pointed to by v which must be a pointer to a struct, struct slice
+// or struct array.
 //
 // Decode matches all exported struct fields based on the header. Struct fields
 // can be adjusted by using tags.
@@ -131,17 +133,37 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 //
 // Interface fields are decoded to strings unless they contain settable pointer
 // value.
+//
+// If v is a slice, Decode resets it and reads the input until EOF, storing all
+// decoded values in the given slice. Decode returns nil on EOF.
+//
+// If v is an array, Decode reads the input until EOF or until it decodes all
+// corresponding array elements. If the input contains less elements than the
+// array, the additional Go array elements are set to zero values. Decode
+// returns nil on EOF unless there were no records decoded.
 func (d *Decoder) Decode(v interface{}) (err error) {
-	d.record, err = d.r.Read()
-	if err != nil {
-		return err
+	val := reflect.ValueOf(v)
+	if val.Kind() != reflect.Ptr || val.IsNil() {
+		return &InvalidDecodeError{Type: reflect.TypeOf(v)}
 	}
 
-	if len(d.record) != len(d.header) {
-		return ErrFieldCount
+	elem := indirect(val.Elem())
+	switch elem.Kind() {
+	case reflect.Struct:
+		return d.decodeStruct(elem)
+	case reflect.Slice:
+		return d.decodeSlice(elem)
+	case reflect.Array:
+		return d.decodeArray(elem)
+	case reflect.Interface, reflect.Invalid:
+		elem = walkValue(elem)
+		if elem.Kind() != reflect.Invalid {
+			return &InvalidDecodeError{Type: elem.Type()}
+		}
+		return &InvalidDecodeError{Type: val.Type()}
+	default:
+		return &InvalidDecodeError{Type: reflect.PtrTo(elem.Type())}
 	}
-
-	return d.unmarshal(d.record, v)
 }
 
 // Record returns the most recently read record. The slice is valid until the
@@ -170,21 +192,78 @@ func (d *Decoder) Unused() []int {
 	return indices
 }
 
-func (d *Decoder) unmarshal(record []string, v interface{}) error {
-	vv := reflect.ValueOf(v)
-	if vv.Kind() != reflect.Ptr || vv.IsNil() {
-		return &InvalidDecodeError{Type: reflect.TypeOf(v)}
+func (d *Decoder) decodeSlice(slice reflect.Value) error {
+	typ := slice.Type().Elem()
+	if walkType(typ).Kind() != reflect.Struct {
+		return &InvalidDecodeError{Type: reflect.PtrTo(slice.Type())}
 	}
 
-	elem := indirect(vv.Elem())
-	if typ := elem.Type(); typ.Kind() != reflect.Struct {
-		return &InvalidDecodeError{Type: reflect.PtrTo(typ)}
+	slice.SetLen(0)
+
+	var c int
+	for ; ; c++ {
+		v := reflect.New(typ)
+
+		err := d.decodeStruct(indirect(v))
+		if err == io.EOF {
+			if c == 0 {
+				return io.EOF
+			}
+			break
+		}
+
+		// we want to ensure that we append this element to the slice even if it
+		// was partially decoded due to error. This is how JSON pkg does it.
+		slice.Set(reflect.Append(slice, v.Elem()))
+		if err != nil {
+			return err
+		}
 	}
 
-	return d.unmarshalStruct(record, elem)
+	slice.Set(slice.Slice3(0, c, c))
+	return nil
 }
 
-func (d *Decoder) unmarshalStruct(record []string, v reflect.Value) error {
+func (d *Decoder) decodeArray(v reflect.Value) error {
+	if walkType(v.Type().Elem()).Kind() != reflect.Struct {
+		return &InvalidDecodeError{Type: reflect.PtrTo(v.Type())}
+	}
+
+	l := v.Len()
+
+	var i int
+	for ; i < l; i++ {
+		if err := d.decodeStruct(indirect(v.Index(i))); err == io.EOF {
+			if i == 0 {
+				return io.EOF
+			}
+			break
+		} else if err != nil {
+			return err
+		}
+	}
+
+	zero := reflect.Zero(v.Type().Elem())
+	for i := i; i < l; i++ {
+		v.Index(i).Set(zero)
+	}
+	return nil
+}
+
+func (d *Decoder) decodeStruct(v reflect.Value) (err error) {
+	d.record, err = d.r.Read()
+	if err != nil {
+		return err
+	}
+
+	if len(d.record) != len(d.header) {
+		return ErrFieldCount
+	}
+
+	return d.unmarshal(d.record, v)
+}
+
+func (d *Decoder) unmarshal(record []string, v reflect.Value) error {
 	fields, err := d.fields(typeKey{d.tag(), v.Type()})
 	if err != nil {
 		return err

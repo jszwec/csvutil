@@ -49,8 +49,15 @@ func (e *InvalidDecodeError) Error() string {
 		return "csvutil: Decode(non-pointer " + e.Type.String() + ")"
 	}
 
-	if indirect(reflect.New(e.Type)).Type().Kind() != reflect.Struct {
-		return "csvutil: Decode(non-struct pointer)"
+	typ := walkType(e.Type)
+	switch typ.Kind() {
+	case reflect.Struct:
+	case reflect.Slice, reflect.Array:
+		if typ.Elem().Kind() != reflect.Struct {
+			return "csvutil: Decode(invalid type " + e.Type.String() + ")"
+		}
+	default:
+		return "csvutil: Decode(invalid type " + e.Type.String() + ")"
 	}
 
 	return "csvutil: Decode(nil " + e.Type.String() + ")"
@@ -71,7 +78,11 @@ func (e *InvalidUnmarshalError) Error() string {
 		return "csvutil: Unmarshal(non-pointer " + e.Type.String() + ")"
 	}
 
-	return "csvutil: Unmarshal(non-slice pointer)"
+	if e.Type.Elem().Kind() != reflect.Slice {
+		return "csvutil: Unmarshal(non-slice pointer)"
+	}
+
+	return "csvutil: Unmarshal(invalid type " + e.Type.String() + ")"
 }
 
 // InvalidEncodeError is returned by Encode when the provided value was invalid.

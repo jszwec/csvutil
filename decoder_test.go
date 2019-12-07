@@ -3,6 +3,7 @@ package csvutil
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"io"
 	"math"
@@ -285,6 +286,7 @@ type B struct {
 var Int = 10
 var String = "string"
 var PString = &String
+var TypeISlice []TypeI
 
 func pint(n int) *int                       { return &n }
 func pint8(n int8) *int8                    { return &n }
@@ -302,8 +304,9 @@ func pstring(s string) *string              { return &s }
 func pbool(b bool) *bool                    { return &b }
 func pinterface(v interface{}) *interface{} { return &v }
 
-func ppint(n int) **int   { p := pint(n); return &p }
-func pppint(n int) ***int { p := ppint(n); return &p }
+func ppint(n int) **int       { p := pint(n); return &p }
+func pppint(n int) ***int     { p := ppint(n); return &p }
+func ppTypeI(v TypeI) **TypeI { p := &v; return &p }
 
 func TestDecoder(t *testing.T) {
 	fixtures := []struct {
@@ -730,6 +733,165 @@ string,"{""key"":""value""}"
 			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler", "DoublePtr"},
 		},
 		{
+			desc: "nil slice of structs",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &TypeISlice,
+			expected: &[]TypeI{
+				{String: "first", Int: 1},
+				{String: "second", Int: 2},
+			},
+			expectedRecord: nil,
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "slice of structs",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &[]TypeI{},
+			expected: &[]TypeI{
+				{String: "first", Int: 1},
+				{String: "second", Int: 2},
+			},
+			expectedRecord: nil,
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "slice of structs - pre-allocated",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &[]TypeI{0: TypeI{Int: 200}, 1024: TypeI{Int: 100}},
+			expected: &[]TypeI{
+				{String: "first", Int: 1},
+				{String: "second", Int: 2},
+			},
+			expectedRecord: nil,
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "slice of pointer structs",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &[]*TypeI{},
+			expected: &[]*TypeI{
+				{String: "first", Int: 1},
+				{String: "second", Int: 2},
+			},
+			expectedRecord: nil,
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "slice of double pointer structs",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &[]**TypeI{},
+			expected: &[]**TypeI{
+				ppTypeI(TypeI{String: "first", Int: 1}),
+				ppTypeI(TypeI{String: "second", Int: 2}),
+			},
+			expectedRecord: nil,
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "invalid slice of interfaces",
+			in:   "String,int\nfirst,1",
+			out:  &[]interface{}{},
+			err: &InvalidDecodeError{
+				Type: reflect.TypeOf(&[]interface{}{}),
+			},
+		},
+		{
+			desc: "invalid slice of ints",
+			in:   "String,int\nfirst,1",
+			out:  &[]int{},
+			err: &InvalidDecodeError{
+				Type: reflect.TypeOf(&[]int{}),
+			},
+		},
+		{
+			desc: "invalid non pointer slice of ints",
+			in:   "String,int\nfirst,1",
+			out:  []int{},
+			err: &InvalidDecodeError{
+				Type: reflect.TypeOf([]int{}),
+			},
+		},
+		{
+			desc: "array of structs",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &[2]TypeI{},
+			expected: &[2]TypeI{
+				{String: "first", Int: 1},
+				{String: "second", Int: 2},
+			},
+			expectedRecord: []string{"second", "2"},
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "array of pointer structs",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &[2]*TypeI{},
+			expected: &[2]*TypeI{
+				{String: "first", Int: 1},
+				{String: "second", Int: 2},
+			},
+			expectedRecord: []string{"second", "2"},
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "array of double pointer structs",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &[2]**TypeI{},
+			expected: &[2]**TypeI{
+				ppTypeI(TypeI{String: "first", Int: 1}),
+				ppTypeI(TypeI{String: "second", Int: 2}),
+			},
+			expectedRecord: []string{"second", "2"},
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "array of structs - bigger than the data set",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out: &[4]TypeI{
+				3: {String: "I should be zeroed out", Int: 1024},
+			},
+			expected: &[4]TypeI{
+				0: {String: "first", Int: 1},
+				1: {String: "second", Int: 2},
+			},
+			expectedRecord: nil,
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "array of structs - smaller than the data set",
+			in:   "String,int\nfirst,1\nsecond,2",
+			out:  &[1]TypeI{},
+			expected: &[1]TypeI{
+				0: {String: "first", Int: 1},
+			},
+			expectedRecord: []string{"first", "1"},
+			header:         []string{"String", "int"},
+		},
+		{
+			desc: "invalid array of interfaces",
+			in:   "String,int\nfirst,1",
+			out:  &[1]interface{}{},
+			err: &InvalidDecodeError{
+				Type: reflect.TypeOf(&[1]interface{}{}),
+			},
+		},
+		{
+			desc: "invalid array of ints",
+			in:   "String,int\nfirst,1",
+			out:  &[1]int{},
+			err: &InvalidDecodeError{
+				Type: reflect.TypeOf(&[1]int{}),
+			},
+		},
+		{
+			desc: "invalid non pointer array of ints",
+			in:   "String,int\nfirst,1",
+			out:  [1]int{},
+			err: &InvalidDecodeError{
+				Type: reflect.TypeOf([1]int{}),
+			},
+		},
+		{
 			desc: "unsupported type",
 			in:   "string,int\ns,1",
 			out:  &TypeWithInvalidField{},
@@ -832,6 +994,12 @@ string,"{""key"":""value""}"
 			err:  &InvalidDecodeError{Type: reflect.TypeOf(&Int)},
 		},
 		{
+			desc: "not a struct in decode - non ptr",
+			in:   "string,int\n1,1",
+			out:  Int,
+			err:  &InvalidDecodeError{Type: reflect.TypeOf(Int)},
+		},
+		{
 			desc: "invalid base64 string",
 			in:   "Binary\n1",
 			out:  &struct{ Binary []byte }{},
@@ -919,8 +1087,13 @@ string,"{""key"":""value""}"
 			{nil, "csvutil: Decode(nil)"},
 			{nilIface, "csvutil: Decode(nil)"},
 			{struct{}{}, "csvutil: Decode(non-pointer struct {})"},
-			{(*int)(nil), "csvutil: Decode(non-struct pointer)"},
-			{&nilIface, "csvutil: Decode(non-struct pointer)"},
+			{int(1), "csvutil: Decode(non-pointer int)"},
+			{[]int{}, "csvutil: Decode(non-pointer []int)"},
+			{(*int)(nil), "csvutil: Decode(invalid type *int)"},
+			{(*[]int)(nil), "csvutil: Decode(invalid type *[]int)"},
+			{(*[]*int)(nil), "csvutil: Decode(invalid type *[]*int)"},
+			{(*[1]*int)(nil), "csvutil: Decode(invalid type *[1]*int)"},
+			{&nilIface, "csvutil: Decode(invalid type *interface {})"},
 			{(*TypeA)(nil), "csvutil: Decode(nil *csvutil.TypeA)"},
 		}
 
@@ -935,7 +1108,7 @@ string,"{""key"":""value""}"
 				continue
 			}
 			if got := err.Error(); got != f.expected {
-				t.Errorf("want Decode=%q; got %q", got, f.expected)
+				t.Errorf("want Decode=%q; got %q", f.expected, got)
 			}
 		}
 	})
@@ -1420,6 +1593,101 @@ s,1,3.14,true
 			}
 		})
 	})
+
+	t.Run("decode slice", func(t *testing.T) {
+		csvr := csv.NewReader(strings.NewReader("String,int\nfirst,1\nsecond,2"))
+		dec, err := NewDecoder(csvr)
+		if err != nil {
+			t.Fatalf("want err == nil; got %v", err)
+		}
+
+		var data []TypeI
+		if err := dec.Decode(&data); err != nil {
+			t.Errorf("want err=nil; got %v", err)
+		}
+
+		if len(data) != 2 {
+			t.Fatalf("want len=2; got %d", len(data))
+		}
+
+		if err := dec.Decode(&data); err != io.EOF {
+			t.Errorf("want err=EOF; got %v", err)
+		}
+	})
+
+	t.Run("decode slice - error", func(t *testing.T) {
+		csvr := csv.NewReader(strings.NewReader("String,int\nfirst,1\nsecond,notint\nthird,3"))
+		dec, err := NewDecoder(csvr)
+		if err != nil {
+			t.Fatalf("want err == nil; got %v", err)
+		}
+
+		var data []TypeI
+		if err := dec.Decode(&data); err == nil {
+			t.Errorf("want err!=nil; got %v", err)
+		}
+
+		if len(data) != 2 {
+			t.Errorf("want len=2; got %d", len(data))
+		}
+
+		if data[1].String != "second" {
+			t.Errorf("want String=second; got %s", data[1].String)
+		}
+		if data[1].Int != 0 {
+			t.Errorf("want Int=0; got %d", data[1].Int)
+		}
+	})
+
+	t.Run("decode array", func(t *testing.T) {
+		csvr := csv.NewReader(strings.NewReader("String,int\nfirst,1\nsecond,2"))
+		dec, err := NewDecoder(csvr)
+		if err != nil {
+			t.Fatalf("want err == nil; got %v", err)
+		}
+
+		var data [1]TypeI
+		if err := dec.Decode(&data); err != nil {
+			t.Errorf("want err=nil; got %v", err)
+		}
+
+		if expected := (TypeI{String: "first", Int: 1}); data[0] != expected {
+			t.Errorf("want %v; got %v", expected, data[0])
+		}
+
+		if err := dec.Decode(&data); err != nil {
+			t.Errorf("want err=nil; got %v", err)
+		}
+
+		if expected := (TypeI{String: "second", Int: 2}); data[0] != expected {
+			t.Errorf("want %v; got %v", expected, data[0])
+		}
+
+		if err := dec.Decode(&data); err != io.EOF {
+			t.Errorf("want err=EOF; got %v", err)
+		}
+	})
+
+	t.Run("decode array - error", func(t *testing.T) {
+		csvr := csv.NewReader(strings.NewReader("String,int\nfirst,1\nsecond,notint"))
+		dec, err := NewDecoder(csvr)
+		if err != nil {
+			t.Fatalf("want err == nil; got %v", err)
+		}
+
+		var data [2]TypeI
+		if err := dec.Decode(&data); err == nil {
+			t.Errorf("want err!=nil; got %v", err)
+		}
+
+		if data[1].String != "second" {
+			t.Errorf("want String=second; got %s", data[1].String)
+		}
+		if data[1].Int != 0 {
+			t.Errorf("want Int=0; got %d", data[1].Int)
+		}
+	})
+
 }
 
 func BenchmarkDecode(b *testing.B) {

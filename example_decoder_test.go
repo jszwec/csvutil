@@ -45,6 +45,65 @@ id,name,age,city
 	// [{<nil> alice la 25} {<nil> bob ny 30}]
 }
 
+func ExampleDecoder_Decode_slice() {
+	type User struct {
+		ID   *int   `csv:"id,omitempty"`
+		Name string `csv:"name"`
+		City string `csv:"city"`
+		Age  int    `csv:"age"`
+	}
+
+	csvReader := csv.NewReader(strings.NewReader(`
+id,name,age,city
+,alice,25,la
+,bob,30,ny`))
+
+	dec, err := csvutil.NewDecoder(csvReader)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var users []User
+	if err := dec.Decode(&users); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(users)
+
+	// Output:
+	// [{<nil> alice la 25} {<nil> bob ny 30}]
+}
+
+func ExampleDecoder_Decode_array() {
+	type User struct {
+		ID   *int   `csv:"id,omitempty"`
+		Name string `csv:"name"`
+		City string `csv:"city"`
+		Age  int    `csv:"age"`
+	}
+
+	csvReader := csv.NewReader(strings.NewReader(`
+id,name,age,city
+,alice,25,la
+,bob,30,ny
+,john,29,ny`))
+
+	dec, err := csvutil.NewDecoder(csvReader)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var users [2]User
+	if err := dec.Decode(&users); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(users)
+
+	// Output:
+	// [{<nil> alice la 25} {<nil> bob ny 30}]
+}
+
 func ExampleDecoder_Unused() {
 	type User struct {
 		Name      string            `csv:"name"`

@@ -123,6 +123,10 @@ func TestUnmarshal(t *testing.T) {
 			{"non pointer struct", struct{}{}, "csvutil: Unmarshal(non-pointer struct {})"},
 			{"non-slice pointer", (*int)(nil), "csvutil: Unmarshal(non-slice pointer)"},
 			{"non-nil non-slice pointer", &n, "csvutil: Unmarshal(non-slice pointer)"},
+			{"double slice", &[][]TypeI{}, "csvutil: Unmarshal(invalid type *[][]csvutil.TypeI)"},
+			{"triple slice", &[][][]TypeI{}, "csvutil: Unmarshal(invalid type *[][][]csvutil.TypeI)"},
+			{"double ptr slice", &[]*[]TypeI{}, "csvutil: Unmarshal(invalid type *[]*[]csvutil.TypeI)"},
+			{"int slice", &[]int{}, "csvutil: Unmarshal(invalid type *[]int)"},
 		}
 
 		for _, f := range fixtures {
