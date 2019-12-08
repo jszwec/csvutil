@@ -376,7 +376,7 @@ func TestMarshal(t *testing.T) {
 	})
 
 	t.Run("unmarshal type error message", func(t *testing.T) {
-		expected := "csvutil: cannot unmarshal field into Go value of type int"
+		expected := `csvutil: cannot unmarshal "field" into Go value of type int`
 		err := Unmarshal([]byte("X\nfield"), &[]A{})
 		if err == nil {
 			t.Fatal("want err not to be nil")

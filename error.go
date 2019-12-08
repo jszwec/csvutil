@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 )
 
 // ErrFieldCount is returned when header's length doesn't match the length of
@@ -18,7 +19,7 @@ type UnmarshalTypeError struct {
 }
 
 func (e *UnmarshalTypeError) Error() string {
-	return "csvutil: cannot unmarshal " + e.Value + " into Go value of type " + e.Type.String()
+	return "csvutil: cannot unmarshal " + strconv.Quote(e.Value) + " into Go value of type " + e.Type.String()
 }
 
 // An UnsupportedTypeError is returned when attempting to encode or decode
