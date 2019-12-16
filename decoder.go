@@ -270,14 +270,23 @@ func (d *Decoder) unmarshal(record []string, v reflect.Value) error {
 	}
 
 	for _, f := range fields {
-		if f.tag.omitEmpty && record[f.columnIndex] == "" {
+
+		isBlank := record[f.columnIndex] == ""
+
+		if f.tag.omitEmpty && isBlank {
 			continue
 		}
+
+		isPtr := false
 
 		fv := v
 		for _, i := range f.index {
 			fv = fv.Field(i)
-			if fv.Kind() == reflect.Ptr {
+			isPtr = fv.Kind() == reflect.Ptr
+			if isPtr {
+				if isBlank {
+					continue
+				}
 				if fv.IsNil() {
 					// this can happen if a field is an unexported embedded
 					// pointer type. In Go prior to 1.10 it was possible to
@@ -290,6 +299,10 @@ func (d *Decoder) unmarshal(record []string, v reflect.Value) error {
 				}
 				fv = fv.Elem()
 			}
+		}
+
+		if isPtr && isBlank {
+			continue
 		}
 
 		s := record[f.columnIndex]
