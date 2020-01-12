@@ -190,12 +190,23 @@ func (e *Encoder) marshal(v reflect.Value) error {
 
 	for i, f := range fields {
 		v := walkIndex(v, f.index)
+
+		omitempty := f.tag.omitEmpty
+		if v.Kind() == reflect.Ptr {
+			// We should disable omitempty for pointer values, because if it's
+			// nil we will automatically encode it as an empty string. However,
+			// the initialized pointer should not be affected, even if it's
+			// a default value.
+			omitempty = false
+		}
+
+		v = walkPtr(v)
 		if !v.IsValid() {
 			index[i] = 0
 			continue
 		}
 
-		b, err := f.encodeFunc(buf, v, f.tag.omitEmpty)
+		b, err := f.encodeFunc(buf, v, omitempty)
 		if err != nil {
 			return err
 		}
@@ -237,8 +248,7 @@ func walkIndex(v reflect.Value, index []int) reflect.Value {
 		}
 		v = v.Field(i)
 	}
-
-	return walkPtr(v)
+	return v
 }
 
 func walkPtr(v reflect.Value) reflect.Value {

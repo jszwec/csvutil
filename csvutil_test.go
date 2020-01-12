@@ -648,3 +648,47 @@ func TestHeader(t *testing.T) {
 		}
 	})
 }
+
+func TestParity(t *testing.T) {
+	type A struct {
+		Int      int
+		Pint     *int
+		OmitInt  int  `csv:",omitempty"`
+		OmitPint *int `csv:",omitempty"`
+	}
+
+	in := []A{
+		{
+			Int:      0,
+			Pint:     pint(0),
+			OmitInt:  0,
+			OmitPint: pint(0),
+		},
+		{
+			Int:      1,
+			Pint:     pint(1),
+			OmitInt:  1,
+			OmitPint: pint(1),
+		},
+		{
+			Int:      0,
+			Pint:     pint(0),
+			OmitInt:  0,
+			OmitPint: nil,
+		},
+	}
+
+	b, err := Marshal(in)
+	if err != nil {
+		t.Fatalf("want err=nil; got %v", err)
+	}
+
+	var out []A
+	if err := Unmarshal(b, &out); err != nil {
+		t.Fatalf("want err=nil; got %v", err)
+	}
+
+	if !reflect.DeepEqual(in, out) {
+		t.Errorf("want out=%v; got %v", in, out)
+	}
+}

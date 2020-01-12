@@ -171,6 +171,43 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			desc: "omitempty tags on pointers - non nil default values",
+			in: []interface{}{
+				struct {
+					Pint    *int    `csv:",omitempty"`
+					PPint   **int   `csv:",omitempty"`
+					PPint2  **int   `csv:",omitempty"`
+					PString *string `csv:",omitempty"`
+					PBool   *bool   `csv:",omitempty"`
+				}{
+					pint(0),
+					ppint(0),
+					new(*int),
+					pstring(""),
+					pbool(false),
+				},
+			},
+			out: [][]string{
+				{"Pint", "PPint", "PPint2", "PString", "PBool"},
+				{"0", "0", "", "", "false"},
+			},
+		},
+		{
+			desc: "omitempty tags on pointers - nil ptrs",
+			in: []interface{}{
+				struct {
+					Pint    *int    `csv:",omitempty"`
+					PPint   **int   `csv:",omitempty"`
+					PString *string `csv:",omitempty"`
+					PBool   *bool   `csv:",omitempty"`
+				}{},
+			},
+			out: [][]string{
+				{"Pint", "PPint", "PString", "PBool"},
+				{"", "", "", ""},
+			},
+		},
+		{
 			desc: "embedded types #1",
 			in: []interface{}{
 				TypeA{
