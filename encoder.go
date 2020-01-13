@@ -192,11 +192,11 @@ func (e *Encoder) marshal(v reflect.Value) error {
 		v := walkIndex(v, f.index)
 
 		omitempty := f.tag.omitEmpty
-		if v.Kind() == reflect.Ptr {
-			// We should disable omitempty for pointer values, because if it's
-			// nil we will automatically encode it as an empty string. However,
-			// the initialized pointer should not be affected, even if it's
-			// a default value.
+		if v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+			// We should disable omitempty for pointer and interface values,
+			// because if it's nil we will automatically encode it as an empty
+			// string. However, the initialized pointer should not be affected,
+			// even if it's a default value.
 			omitempty = false
 		}
 

@@ -174,37 +174,88 @@ func TestEncoder(t *testing.T) {
 			desc: "omitempty tags on pointers - non nil default values",
 			in: []interface{}{
 				struct {
-					Pint    *int    `csv:",omitempty"`
-					PPint   **int   `csv:",omitempty"`
-					PPint2  **int   `csv:",omitempty"`
-					PString *string `csv:",omitempty"`
-					PBool   *bool   `csv:",omitempty"`
+					Pint    *int         `csv:",omitempty"`
+					PPint   **int        `csv:",omitempty"`
+					PPint2  **int        `csv:",omitempty"`
+					PString *string      `csv:",omitempty"`
+					PBool   *bool        `csv:",omitempty"`
+					Iint    *interface{} `csv:",omitempty"`
 				}{
 					pint(0),
 					ppint(0),
 					new(*int),
 					pstring(""),
 					pbool(false),
+					pinterface(0),
 				},
 			},
 			out: [][]string{
-				{"Pint", "PPint", "PPint2", "PString", "PBool"},
-				{"0", "0", "", "", "false"},
+				{"Pint", "PPint", "PPint2", "PString", "PBool", "Iint"},
+				{"0", "0", "", "", "false", "0"},
 			},
 		},
 		{
 			desc: "omitempty tags on pointers - nil ptrs",
 			in: []interface{}{
 				struct {
-					Pint    *int    `csv:",omitempty"`
-					PPint   **int   `csv:",omitempty"`
-					PString *string `csv:",omitempty"`
-					PBool   *bool   `csv:",omitempty"`
+					Pint    *int         `csv:",omitempty"`
+					PPint   **int        `csv:",omitempty"`
+					PString *string      `csv:",omitempty"`
+					PBool   *bool        `csv:",omitempty"`
+					Iint    *interface{} `csv:",omitempty"`
 				}{},
 			},
 			out: [][]string{
-				{"Pint", "PPint", "PString", "PBool"},
-				{"", "", "", ""},
+				{"Pint", "PPint", "PString", "PBool", "Iint"},
+				{"", "", "", "", ""},
+			},
+		},
+		{
+			desc: "omitempty tags on interfaces - non nil default values",
+			in: []interface{}{
+				struct {
+					Iint  interface{} `csv:",omitempty"`
+					IPint interface{} `csv:",omitempty"`
+				}{
+					0,
+					pint(0),
+				},
+				struct {
+					Iint  interface{} `csv:",omitempty"`
+					IPint interface{} `csv:",omitempty"`
+				}{
+					1,
+					pint(1),
+				},
+			},
+			out: [][]string{
+				{"Iint", "IPint"},
+				{"0", "0"},
+				{"1", "1"},
+			},
+		},
+		{
+			desc: "omitempty tags on interfaces - nil",
+			in: []interface{}{
+				struct {
+					Iint  interface{} `csv:",omitempty"`
+					IPint interface{} `csv:",omitempty"`
+				}{
+					nil,
+					nil,
+				},
+				struct {
+					Iint  interface{} `csv:",omitempty"`
+					IPint interface{} `csv:",omitempty"`
+				}{
+					(*int)(nil),
+					pinterface((*int)(nil)),
+				},
+			},
+			out: [][]string{
+				{"Iint", "IPint"},
+				{"", ""},
+				{"", ""},
 			},
 		},
 		{

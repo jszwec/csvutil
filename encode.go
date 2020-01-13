@@ -63,6 +63,15 @@ func encodeInterface(buf []byte, v reflect.Value, omitempty bool) ([]byte, error
 	}
 
 	v = v.Elem()
+
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		if v.IsNil() {
+			return buf, nil
+		}
+	default:
+	}
+
 	enc, err := encodeFn(v.Type())
 	if err != nil {
 		return nil, err
