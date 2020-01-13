@@ -79,10 +79,6 @@ func (e *InvalidUnmarshalError) Error() string {
 		return "csvutil: Unmarshal(non-pointer " + e.Type.String() + ")"
 	}
 
-	if e.Type.Elem().Kind() != reflect.Slice {
-		return "csvutil: Unmarshal(non-slice pointer)"
-	}
-
 	return "csvutil: Unmarshal(invalid type " + e.Type.String() + ")"
 }
 

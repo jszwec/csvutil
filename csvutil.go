@@ -9,9 +9,9 @@ import (
 
 const defaultTag = "csv"
 
-// Unmarshal parses the CSV-encoded data and stores the result in the slice
-// pointed to by v. If v is nil or not a pointer to a struct slice, Unmarshal
-// returns an InvalidUnmarshalError.
+// Unmarshal parses the CSV-encoded data and stores the result in the slice or
+// the array pointed to by v. If v is nil or not a pointer to a struct slice or
+// struct array, Unmarshal returns an InvalidUnmarshalError.
 //
 // Unmarshal uses the std encoding/csv.Reader for parsing and csvutil.Decoder
 // for populating the struct elements in the provided slice. For exact decoding
@@ -29,7 +29,9 @@ func Unmarshal(data []byte, v interface{}) error {
 		return &InvalidUnmarshalError{Type: reflect.TypeOf(v)}
 	}
 
-	if val.Type().Elem().Kind() != reflect.Slice {
+	switch val.Type().Elem().Kind() {
+	case reflect.Slice, reflect.Array:
+	default:
 		return &InvalidUnmarshalError{Type: val.Type()}
 	}
 
@@ -39,15 +41,22 @@ func Unmarshal(data []byte, v interface{}) error {
 		return &InvalidUnmarshalError{Type: val.Type()}
 	}
 
-	c := countRecords(data)
-	slice := reflect.MakeSlice(typ, c, c)
-
 	dec, err := NewDecoder(newCSVReader(bytes.NewReader(data)))
 	if err == io.EOF {
 		return nil
 	} else if err != nil {
 		return err
 	}
+
+	// for the array just call decodeArray directly; for slice values call the
+	// optimized code for better performance.
+
+	if typ.Kind() == reflect.Array {
+		return dec.decodeArray(val.Elem())
+	}
+
+	c := countRecords(data)
+	slice := reflect.MakeSlice(typ, c, c)
 
 	var i int
 	for ; ; i++ {

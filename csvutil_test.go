@@ -31,6 +31,68 @@ func TestUnmarshal(t *testing.T) {
 			},
 		},
 		{
+			desc: "array - two records",
+			src:  []byte("String,int\nstring1,1\nstring2,2"),
+			in:   new([2]TypeI),
+			out: &[2]TypeI{
+				{"string1", 1},
+				{"string2", 2},
+			},
+		},
+		{
+			desc: "array - pointer type with two records",
+			src:  []byte("String,int\nstring1,1\nstring2,2"),
+			in:   &[2]*TypeI{},
+			out: &[2]*TypeI{
+				{"string1", 1},
+				{"string2", 2},
+			},
+		},
+		{
+			desc: "array - pointer type with two records size three",
+			src:  []byte("String,int\nstring1,1\nstring2,2"),
+			in:   &[3]*TypeI{},
+			out: &[3]*TypeI{
+				{"string1", 1},
+				{"string2", 2},
+				nil,
+			},
+		},
+		{
+			desc: "array - pointer type with two records size three - initialized",
+			src:  []byte("String,int\nstring1,1\nstring2,2"),
+			in:   &[3]*TypeI{{}, {}, {}},
+			out: &[3]*TypeI{
+				{"string1", 1},
+				{"string2", 2},
+				nil,
+			},
+		},
+		{
+			desc: "array - two records size three",
+			src:  []byte("String,int\nstring1,1\nstring2,2"),
+			in:   new([3]TypeI),
+			out: &[3]TypeI{
+				{"string1", 1},
+				{"string2", 2},
+				{},
+			},
+		},
+		{
+			desc: "array - two records size one",
+			src:  []byte("String,int\nstring1,1\nstring2,2"),
+			in:   new([1]TypeI),
+			out: &[1]TypeI{
+				{"string1", 1},
+			},
+		},
+		{
+			desc: "array - two records size zero",
+			src:  []byte("String,int\nstring1,1\nstring2,2"),
+			in:   new([0]TypeI),
+			out:  &[0]TypeI{},
+		},
+		{
 			desc: "quoted input",
 			src:  []byte("\n\n\n\"String\",\"int\"\n\"string1,\n\",\"1\"\n\n\n\n\"string2\",\"2\""),
 			in:   &[]TypeI{},
@@ -121,8 +183,11 @@ func TestUnmarshal(t *testing.T) {
 			{"nil interface", interface{}(nil), "csvutil: Unmarshal(nil)"},
 			{"nil", nil, "csvutil: Unmarshal(nil)"},
 			{"non pointer struct", struct{}{}, "csvutil: Unmarshal(non-pointer struct {})"},
-			{"non-slice pointer", (*int)(nil), "csvutil: Unmarshal(non-slice pointer)"},
-			{"non-nil non-slice pointer", &n, "csvutil: Unmarshal(non-slice pointer)"},
+			{"invalid type double pointer int", (**int)(nil), "csvutil: Unmarshal(invalid type **int)"},
+			{"invalid type int", (*int)(nil), "csvutil: Unmarshal(invalid type *int)"},
+			{"invalid initialized type int", &n, "csvutil: Unmarshal(invalid type *int)"},
+			{"invalid type array of slice", (*[2][]TypeI)(nil), "csvutil: Unmarshal(invalid type *[2][]csvutil.TypeI)"},
+			{"double array", &[2][1]TypeI{}, "csvutil: Unmarshal(invalid type *[2][1]csvutil.TypeI)"},
 			{"double slice", &[][]TypeI{}, "csvutil: Unmarshal(invalid type *[][]csvutil.TypeI)"},
 			{"triple slice", &[][][]TypeI{}, "csvutil: Unmarshal(invalid type *[][][]csvutil.TypeI)"},
 			{"double ptr slice", &[]*[]TypeI{}, "csvutil: Unmarshal(invalid type *[]*[]csvutil.TypeI)"},
