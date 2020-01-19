@@ -1235,6 +1235,201 @@ func TestEncoder(t *testing.T) {
 			t.Errorf("want %v; got %v", Error, err)
 		}
 	})
+
+	t.Run("slice and array", func(t *testing.T) {
+		fixtures := []struct {
+			desc string
+			in   interface{}
+			out  [][]string
+			err  error
+		}{
+			{
+				desc: "slice",
+				in: []TypeI{
+					{"1", 1},
+					{"2", 2},
+				},
+				out: [][]string{
+					{"String", "int"},
+					{"1", "1"},
+					{"2", "2"},
+				},
+			},
+			{
+				desc: "ptr slice",
+				in: &[]TypeI{
+					{"1", 1},
+					{"2", 2},
+				},
+				out: [][]string{
+					{"String", "int"},
+					{"1", "1"},
+					{"2", "2"},
+				},
+			},
+			{
+				desc: "ptr slice with ptr elements",
+				in: &[]*TypeI{
+					{"1", 1},
+					{"2", 2},
+				},
+				out: [][]string{
+					{"String", "int"},
+					{"1", "1"},
+					{"2", "2"},
+				},
+			},
+			{
+				desc: "array",
+				in: [2]TypeI{
+					{"1", 1},
+					{"2", 2},
+				},
+				out: [][]string{
+					{"String", "int"},
+					{"1", "1"},
+					{"2", "2"},
+				},
+			},
+			{
+				desc: "ptr array",
+				in: &[2]TypeI{
+					{"1", 1},
+					{"2", 2},
+				},
+				out: [][]string{
+					{"String", "int"},
+					{"1", "1"},
+					{"2", "2"},
+				},
+			},
+			{
+				desc: "ptr array with ptr elements",
+				in: &[2]*TypeI{
+					{"1", 1},
+					{"2", 2},
+				},
+				out: [][]string{
+					{"String", "int"},
+					{"1", "1"},
+					{"2", "2"},
+				},
+			},
+			{
+				desc: "array with default val",
+				in: [2]TypeI{
+					{"1", 1},
+				},
+				out: [][]string{
+					{"String", "int"},
+					{"1", "1"},
+					{"", ""},
+				},
+			},
+			{
+				desc: "no auto header on empty slice",
+				in:   []TypeI{},
+				out:  [][]string{},
+			},
+			{
+				desc: "no auto header on empty array",
+				in:   [0]TypeI{},
+				out:  [][]string{},
+			},
+			{
+				desc: "disallow double slice",
+				in: [][]TypeI{
+					{
+						{"1", 1},
+					},
+				},
+				err: &InvalidEncodeError{Type: reflect.TypeOf([][]TypeI{})},
+			},
+			{
+				desc: "disallow double ptr slice",
+				in: &[][]TypeI{
+					{
+						{"1", 1},
+					},
+				},
+				err: &InvalidEncodeError{Type: reflect.TypeOf(&[][]TypeI{})},
+			},
+			{
+				desc: "disallow double ptr slice with ptr slice",
+				in: &[]*[]TypeI{
+					{
+						{"1", 1},
+					},
+				},
+				err: &InvalidEncodeError{Type: reflect.TypeOf(&[]*[]TypeI{})},
+			},
+			{
+				desc: "disallow double array",
+				in: [2][2]TypeI{
+					{
+						{"1", 1},
+					},
+				},
+				err: &InvalidEncodeError{Type: reflect.TypeOf([2][2]TypeI{})},
+			},
+			{
+				desc: "disallow double ptr array",
+				in: &[2][2]TypeI{
+					{
+						{"1", 1},
+					},
+				},
+				err: &InvalidEncodeError{Type: reflect.TypeOf(&[2][2]TypeI{})},
+			},
+			{
+				desc: "disallow interface slice",
+				in: []interface{}{
+					TypeI{"1", 1},
+				},
+				err: &InvalidEncodeError{Type: reflect.TypeOf([]interface{}{})},
+			},
+			{
+				desc: "disallow interface array",
+				in: [1]interface{}{
+					TypeI{"1", 1},
+				},
+				err: &InvalidEncodeError{Type: reflect.TypeOf([1]interface{}{})},
+			},
+		}
+
+		for _, f := range fixtures {
+			t.Run(f.desc, func(t *testing.T) {
+				var buf bytes.Buffer
+				w := csv.NewWriter(&buf)
+				err := NewEncoder(w).Encode(f.in)
+
+				if f.err != nil {
+					if !reflect.DeepEqual(f.err, err) {
+						t.Errorf("want err=%v; got %v", f.err, err)
+					}
+					return
+				}
+
+				if err != nil {
+					t.Fatalf("want err=nil; got %v", err)
+				}
+
+				w.Flush()
+				if err := w.Error(); err != nil {
+					t.Errorf("want err=nil; got %v", err)
+				}
+
+				var out bytes.Buffer
+				if err := csv.NewWriter(&out).WriteAll(f.out); err != nil {
+					t.Errorf("want err=nil; got %v", err)
+				}
+
+				if buf.String() != out.String() {
+					t.Errorf("want=%s; got %s", out.String(), buf.String())
+				}
+			})
+		}
+	})
 }
 
 func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {

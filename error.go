@@ -104,11 +104,15 @@ func (e *InvalidMarshalError) Error() string {
 		return "csvutil: Marshal(nil)"
 	}
 
-	if e.Type.Kind() == reflect.Slice {
+	if walkType(e.Type).Kind() == reflect.Slice {
 		return "csvutil: Marshal(non struct slice " + e.Type.String() + ")"
 	}
 
-	return "csvutil: Marshal(non-slice " + e.Type.String() + ")"
+	if walkType(e.Type).Kind() == reflect.Array {
+		return "csvutil: Marshal(non struct array " + e.Type.String() + ")"
+	}
+
+	return "csvutil: Marshal(invalid type " + e.Type.String() + ")"
 }
 
 // MarshalerError is returned by Encoder when MarshalCSV or MarshalText returned

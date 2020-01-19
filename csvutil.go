@@ -76,8 +76,8 @@ func Unmarshal(data []byte, v interface{}) error {
 	return nil
 }
 
-// Marshal returns the CSV encoding of slice v. If v is not a slice or elements
-// are not structs then Marshal returns InvalidMarshalError.
+// Marshal returns the CSV encoding of slice or array v. If v is not a slice or
+// elements are not structs then Marshal returns InvalidMarshalError.
 //
 // Marshal uses the std encoding/csv.Writer with its default settings for csv
 // encoding.
@@ -92,13 +92,15 @@ func Marshal(v interface{}) ([]byte, error) {
 		return nil, &InvalidMarshalError{}
 	}
 
-	if val.Kind() != reflect.Slice {
-		return nil, &InvalidMarshalError{Type: val.Type()}
+	switch val.Kind() {
+	case reflect.Array, reflect.Slice:
+	default:
+		return nil, &InvalidMarshalError{Type: reflect.ValueOf(v).Type()}
 	}
 
 	typ := walkType(val.Type().Elem())
 	if typ.Kind() != reflect.Struct {
-		return nil, &InvalidMarshalError{Type: val.Type()}
+		return nil, &InvalidMarshalError{Type: reflect.ValueOf(v).Type()}
 	}
 
 	var buf bytes.Buffer
@@ -109,11 +111,8 @@ func Marshal(v interface{}) ([]byte, error) {
 		return nil, err
 	}
 
-	l := val.Len()
-	for i := 0; i < l; i++ {
-		if err := enc.encode(val.Index(i)); err != nil {
-			return nil, err
-		}
+	if err := enc.encodeArray(val); err != nil {
+		return nil, err
 	}
 
 	w.Flush()

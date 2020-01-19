@@ -67,7 +67,7 @@ func NewEncoder(w Writer) *Encoder {
 }
 
 // Encode writes the CSV encoding of v to the output stream. The provided
-// argument v must be a non-nil struct.
+// argument v must be a struct, struct slice or struct array.
 //
 // Only the exported fields will be encoded.
 //
@@ -145,23 +145,42 @@ func (e *Encoder) EncodeHeader(v interface{}) error {
 }
 
 func (e *Encoder) encode(v reflect.Value) error {
-	v = walkValue(v)
+	val := walkValue(v)
 
-	if !v.IsValid() {
+	if !val.IsValid() {
 		return &InvalidEncodeError{}
 	}
 
-	if v.Kind() != reflect.Struct {
+	switch val.Kind() {
+	case reflect.Struct:
+		return e.encodeStruct(val)
+	case reflect.Array, reflect.Slice:
+		if walkType(val.Type().Elem()).Kind() != reflect.Struct {
+			return &InvalidEncodeError{v.Type()}
+		}
+		return e.encodeArray(val)
+	default:
 		return &InvalidEncodeError{v.Type()}
 	}
+}
 
+func (e *Encoder) encodeStruct(v reflect.Value) error {
 	if e.AutoHeader && e.noHeader {
 		if err := e.encodeHeader(v.Type()); err != nil {
 			return err
 		}
 	}
-
 	return e.marshal(v)
+}
+
+func (e *Encoder) encodeArray(v reflect.Value) error {
+	l := v.Len()
+	for i := 0; i < l; i++ {
+		if err := e.encodeStruct(walkValue(v.Index(i))); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *Encoder) encodeHeader(typ reflect.Type) error {

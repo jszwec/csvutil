@@ -296,6 +296,18 @@ func TestMarshal(t *testing.T) {
 			},
 		},
 		{
+			desc: "array with basic type",
+			v: [2]TypeI{
+				{String: "string", Int: 10},
+				{String: "", Int: 0},
+			},
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+				{"", ""},
+			},
+		},
+		{
 			desc: "slice with pointer type",
 			v: []*TypeI{
 				{String: "string", Int: 10},
@@ -308,8 +320,30 @@ func TestMarshal(t *testing.T) {
 			},
 		},
 		{
+			desc: "array with pointer type",
+			v: [2]*TypeI{
+				{String: "string", Int: 10},
+				{String: "", Int: 0},
+			},
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+				{"", ""},
+			},
+		},
+		{
 			desc: "slice pointer",
 			v: &[]*TypeI{
+				{String: "string", Int: 10},
+			},
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+			},
+		},
+		{
+			desc: "array pointer",
+			v: &[1]*TypeI{
 				{String: "string", Int: 10},
 			},
 			out: [][]string{
@@ -331,14 +365,32 @@ func TestMarshal(t *testing.T) {
 			},
 		},
 		{
-			desc: "not a slice",
+			desc: "array pointer wrapped in interface",
+			v: func() (v interface{}) {
+				v = &[1]*TypeI{
+					{String: "string", Int: 10},
+				}
+				return v
+			}(),
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+			},
+		},
+		{
+			desc: "not a slice or array",
 			v:    int64(1),
 			err:  &InvalidMarshalError{Type: reflect.TypeOf(int64(1))},
 		},
 		{
-			desc: "slice of non pointers",
+			desc: "slice of non structs",
 			v:    []int64{1},
 			err:  &InvalidMarshalError{Type: reflect.TypeOf([]int64{})},
+		},
+		{
+			desc: "array of non pointers",
+			v:    [1]int64{1},
+			err:  &InvalidMarshalError{Type: reflect.TypeOf([1]int64{})},
 		},
 		{
 			desc: "nil value",
@@ -402,13 +454,58 @@ func TestMarshal(t *testing.T) {
 		}{
 			{
 				desc:     "int64",
-				expected: "csvutil: Marshal(non-slice int64)",
+				expected: "csvutil: Marshal(invalid type int64)",
 				v:        int64(1),
+			},
+			{
+				desc:     "*int64",
+				expected: "csvutil: Marshal(invalid type *int64)",
+				v:        pint64(1),
 			},
 			{
 				desc:     "[]int64",
 				expected: "csvutil: Marshal(non struct slice []int64)",
 				v:        []int64{},
+			},
+			{
+				desc:     "[]int64",
+				expected: "csvutil: Marshal(non struct slice *[]int64)",
+				v:        &[]int64{},
+			},
+			{
+				desc:     "[2]int64",
+				expected: "csvutil: Marshal(non struct array *[2]int64)",
+				v:        &[2]int64{},
+			},
+			{
+				desc:     "[2]*int64",
+				expected: "csvutil: Marshal(non struct array *[2]*int64)",
+				v:        &[2]*int64{},
+			},
+			{
+				desc:     "*[][]*TypeI",
+				expected: "csvutil: Marshal(non struct slice *[][]*csvutil.TypeI)",
+				v:        &[][]*TypeI{{}},
+			},
+			{
+				desc:     "*[]*[]*TypeI",
+				expected: "csvutil: Marshal(non struct slice *[]*[]*csvutil.TypeI)",
+				v:        &[]*[]*TypeI{{}},
+			},
+			{
+				desc:     "*[1][2]*TypeI",
+				expected: "csvutil: Marshal(non struct array *[1][2]*csvutil.TypeI)",
+				v:        &[1][2]*TypeI{{}},
+			},
+			{
+				desc:     "*[1]*[2]*TypeI",
+				expected: "csvutil: Marshal(non struct array *[1]*[2]*csvutil.TypeI)",
+				v:        &[1]*[2]*TypeI{{}},
+			},
+			{
+				desc:     "[1][2]TypeI",
+				expected: "csvutil: Marshal(non struct array [1][2]csvutil.TypeI)",
+				v:        [1][2]TypeI{{}},
 			},
 			{
 				desc:     "nil interface",
