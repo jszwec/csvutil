@@ -704,6 +704,26 @@ func TestEncoder(t *testing.T) {
 			in:   []interface{}{nilIfacePtr},
 			err:  &InvalidEncodeError{},
 		},
+		{
+			desc: "nil ptr on interface",
+			in: []interface{}{
+				struct {
+					I interface{}
+				}{
+					nil,
+				},
+				struct {
+					I interface{}
+				}{
+					(*int)(nil),
+				},
+			},
+			out: [][]string{
+				{"I"},
+				{""},
+				{""},
+			},
+		},
 	}
 
 	for _, f := range fixtures {
