@@ -194,6 +194,15 @@ type TypeI struct {
 	Int    int    `csv:"int,omitempty"`
 }
 
+type TypeK struct {
+	*TypeL
+}
+
+type TypeL struct {
+	String string
+	Int    int `csv:",omitempty"`
+}
+
 type Unmarshalers struct {
 	CSVUnmarshaler      CSVUnmarshaler      `csv:"csv"`
 	PCSVUnmarshaler     *CSVUnmarshaler     `csv:"pcsv"`
@@ -1016,6 +1025,22 @@ string,"{""key"":""value""}"
 			in:   "Invalid\n1",
 			out:  &struct{ Invalid interface{} }{Invalid: &InvalidType{}},
 			err:  &UnsupportedTypeError{Type: reflect.TypeOf(InvalidType{})},
+		},
+		{
+			desc: "fails on blank non float string with ptr embedded",
+			in:   "string,float\n,",
+			out:  &TypeC{},
+			err:  &UnmarshalTypeError{Type: reflect.TypeOf(float64(0)), Value: ""},
+		},
+		{
+			desc: "blank values on embedded pointers",
+			in:   "String,Int\n,",
+			out:  &TypeK{},
+			expected: &TypeK{
+				&TypeL{String: "", Int: 0},
+			},
+			expectedRecord: []string{"", ""},
+			header:         []string{"String", "Int"},
 		},
 		{
 			desc: "blank values on pointers decode to nil",
