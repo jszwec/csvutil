@@ -92,7 +92,8 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // can be adjusted by using tags.
 //
 // The "omitempty" option specifies that the field should be omitted from
-// the decoding if record's field is an empty string.
+// the decoding if record's field is an empty string. This option is enabled
+// by default on pointer fields.
 //
 // Examples of struct field tags and their meanings:
 // 	// Decode matches this field with "myName" header column.
@@ -127,7 +128,8 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // encoding.TextUnmarshaler.
 //
 // Anonymous struct fields with tags are treated like normal fields and they
-// must implement csvutil.Unmarshaler or encoding.TextUnmarshaler.
+// must implement csvutil.Unmarshaler or encoding.TextUnmarshaler unless inline
+// tag is specified.
 //
 // Anonymous struct fields without tags are populated just as if they were
 // part of the main struct. However, fields in the main struct have bigger
