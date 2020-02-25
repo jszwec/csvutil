@@ -187,3 +187,33 @@ func ExampleDecoder_decodeEmbedded() {
 	// Output:
 	// [{{0 la ca} 1 alice 25} {{0 ny ny} 2 bob 30}]
 }
+
+func ExampleDecoder_Decode_inline() {
+	type Address struct {
+		Street string `csv:"street"`
+		City   string `csv:"city"`
+	}
+
+	type User struct {
+		Name        string  `csv:"name"`
+		Address     Address `csv:",inline"`
+		HomeAddress Address `csv:"home_address_,inline"`
+		WorkAddress Address `csv:"work_address_,inline"`
+		Age         int     `csv:"age,omitempty"`
+	}
+
+	data := []byte(
+		"name,street,city,home_address_street,home_address_city,work_address_street,work_address_city,age\n" +
+			"John,Washington,Boston,Boylston,Boston,River St,Cambridge,26",
+	)
+
+	var users []User
+	if err := csvutil.Unmarshal(data, &users); err != nil {
+		fmt.Println("error:", err)
+	}
+
+	fmt.Println(users)
+
+	// Output:
+	// [{John {Washington Boston} {Boylston Boston} {River St Cambridge} 26}]
+}

@@ -7,9 +7,11 @@ import (
 
 type tag struct {
 	name      string
+	prefix    string
 	empty     bool
 	omitEmpty bool
 	ignore    bool
+	inline    bool
 }
 
 func parseTag(tagname string, field reflect.StructField) (t tag) {
@@ -19,6 +21,7 @@ func parseTag(tagname string, field reflect.StructField) (t tag) {
 		t.empty = true
 		return
 	}
+
 	switch tags[0] {
 	case "-":
 		t.ignore = true
@@ -28,10 +31,16 @@ func parseTag(tagname string, field reflect.StructField) (t tag) {
 	default:
 		t.name = tags[0]
 	}
+
 	for _, tagOpt := range tags[1:] {
 		switch tagOpt {
 		case "omitempty":
 			t.omitEmpty = true
+		case "inline":
+			if walkType(field.Type).Kind() == reflect.Struct {
+				t.inline = true
+				t.prefix = tags[0]
+			}
 		}
 	}
 	return

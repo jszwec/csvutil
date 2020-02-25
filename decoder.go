@@ -112,6 +112,14 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // 	// Decode ignores this field.
 // 	Field int `csv:"-"`
 //
+//	// Decode treats this field exactly as if it was an embedded field and
+//	// matches header columns that start with "my_prefix_" to all fields of this
+//	// type.
+//	Field Struct `csv:"my_prefix_,inline"`
+//
+//	// Decode treats this field exactly as if it was an embedded field.
+//	Field Struct `csv:",inline"`
+//
 // By default decode looks for "csv" tag, but this can be changed by setting
 // Decoder.Tag field.
 //
@@ -141,6 +149,9 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // corresponding array elements. If the input contains less elements than the
 // array, the additional Go array elements are set to zero values. Decode
 // returns nil on EOF unless there were no records decoded.
+//
+// Fields with inline tags that have a non-empty prefix must not be cyclic
+// structures. Passing such values to Decode will result in an infinite loop.
 func (d *Decoder) Decode(v interface{}) (err error) {
 	val := reflect.ValueOf(v)
 	if val.Kind() != reflect.Ptr || val.IsNil() {
@@ -333,7 +344,7 @@ func (d *Decoder) fields(k typeKey) ([]decField, error) {
 	used := make([]bool, len(d.header))
 
 	for _, f := range fields {
-		i, ok := d.hmap[f.tag.name]
+		i, ok := d.hmap[f.name]
 		if !ok {
 			continue
 		}

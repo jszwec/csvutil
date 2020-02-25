@@ -652,6 +652,74 @@ string,"{""key"":""value""}"
 			unused:         []int{1},
 		},
 		{
+			desc: "inline fields",
+			in: "int,Bool,Uint8,float,prefix-STR,prefix-int,prefix-Bool,prefix-Uint8,prefix-float,top-string,STR\n" +
+				"1,true,1,1,j2,2,true,2,2,top-level-str,STR",
+			out: &Inline{},
+			expected: &Inline{
+				J1: TypeJ{
+					Int:        "1",
+					Float:      "1",
+					Embedded16: Embedded16{Bool: true, Uint8: 1},
+				},
+				J2: TypeJ{
+					String:     "j2",
+					Int:        "2",
+					Float:      "2",
+					Embedded16: Embedded16{Bool: true, Uint8: 2},
+				},
+				String:  "top-level-str",
+				String2: "STR",
+			},
+			expectedRecord: []string{"1", "true", "1", "1", "j2", "2", "true", "2", "2", "top-level-str", "STR"},
+			header:         []string{"int", "Bool", "Uint8", "float", "prefix-STR", "prefix-int", "prefix-Bool", "prefix-Uint8", "prefix-float", "top-string", "STR"},
+		},
+		{
+			desc: "inline chain",
+			in:   "AS,AAA,AA,S,A\n1,11,34,2,22",
+			out:  &Inline5{},
+			expected: &Inline5{
+				A: Inline2{
+					S: "1",
+					A: Inline3{
+						Inline4: Inline4{A: "11"},
+					},
+				},
+				B: Inline2{
+					S: "2",
+					B: Inline3{
+						Inline4: Inline4{A: "22"},
+					},
+				},
+			},
+			unused:         []int{2},
+			expectedRecord: []string{"1", "11", "34", "2", "22"},
+			header:         []string{"AS", "AAA", "AA", "S", "A"},
+		},
+		{
+			desc: "cyclic inline - no prefix",
+			in:   "X\n1",
+			out:  &Inline6{},
+			expected: &Inline6{
+				A: Inline7{
+					A: nil,
+					X: 1,
+				},
+			},
+			expectedRecord: []string{"1"},
+			header:         []string{"X"},
+		},
+		{
+			desc: "inline visibility rules",
+			in:   "AA\n1",
+			out:  &Inline8{},
+			expected: &Inline8{
+				AA: 1,
+			},
+			expectedRecord: []string{"1"},
+			header:         []string{"AA"},
+		},
+		{
 			desc: "initialized interface",
 			in:   "Int,Float,String,Bool,Unmarshaler,NilPtr\n10,3.14,string,true,lol,nil",
 			out: &struct{ Int, Float, String, Bool, Unmarshaler, NilPtr interface{} }{

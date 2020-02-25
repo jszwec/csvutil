@@ -120,6 +120,16 @@ func NewEncoder(w Writer) *Encoder {
 // 	// Encode ignores this field.
 // 	Field int `csv:"-"`
 //
+//	// Encode treats this field exactly as if it was an embedded field and adds
+//	// "my_prefix_" to each field's name.
+//	Field Struct `csv:"my_prefix_,inline"`
+//
+//	// Encode treats this field exactly as if it was an embedded field.
+//	Field Struct `csv:",inline"`
+//
+// Fields with inline tags that have a non-empty prefix must not be cyclic
+// structures. Passing such values to Encode will result in an infinite loop.
+//
 // Encode doesn't flush data. The caller is responsible for calling Flush() if
 // the used Writer supports it.
 func (e *Encoder) Encode(v interface{}) error {
@@ -190,7 +200,7 @@ func (e *Encoder) encodeHeader(typ reflect.Type) error {
 	}
 
 	for i, f := range fields {
-		record[i] = f.tag.name
+		record[i] = f.name
 	}
 
 	if err := e.w.Write(record); err != nil {

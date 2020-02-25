@@ -59,6 +59,46 @@ type CSVTextMarshaler struct {
 	TextMarshaler
 }
 
+type Inline struct {
+	J1      TypeJ  `csv:",inline"`
+	J2      TypeJ  `csv:"prefix-,inline"`
+	String  string `csv:"top-string"`
+	String2 string `csv:"STR"`
+}
+
+type Inline2 struct {
+	S string
+	A Inline3 `csv:"A,inline"`
+	B Inline3 `csv:",inline"`
+}
+
+type Inline3 struct {
+	Inline4 `csv:",inline"`
+}
+
+type Inline4 struct {
+	A string
+}
+
+type Inline5 struct {
+	A Inline2 `csv:"A,inline"`
+	B Inline2 `csv:",inline"`
+}
+
+type Inline6 struct {
+	A Inline7 `csv:",inline"`
+}
+
+type Inline7 struct {
+	A *Inline6 `csv:",inline"`
+	X int
+}
+
+type Inline8 struct {
+	F  *Inline4 `csv:"A,inline"`
+	AA int
+}
+
 type TypeH struct {
 	Int     int         `csv:"int,omitempty"`
 	Int8    int8        `csv:"int8,omitempty"`
@@ -583,6 +623,183 @@ func TestEncoder(t *testing.T) {
 			out: [][]string{
 				{"csv", "text"},
 				{"csvmarshaler", "textmarshaler"},
+			},
+		},
+		{
+			desc: "inline fields",
+			in: []interface{}{
+				Inline{
+					J1: TypeJ{
+						String:     "j1",
+						Int:        "1",
+						Float:      "1",
+						Embedded16: Embedded16{Bool: true, Uint8: 1},
+					},
+					J2: TypeJ{
+						String:     "j2",
+						Int:        "2",
+						Float:      "2",
+						Embedded16: Embedded16{Bool: true, Uint8: 2},
+					},
+					String:  "top-level-str",
+					String2: "STR",
+				},
+			},
+			out: [][]string{
+				{"int", "Bool", "Uint8", "float", "prefix-STR", "prefix-int", "prefix-Bool", "prefix-Uint8", "prefix-float", "top-string", "STR"},
+				{"1", "true", "1", "1", "j2", "2", "true", "2", "2", "top-level-str", "STR"},
+			},
+		},
+		{
+			desc: "inline chain",
+			in: []interface{}{
+				Inline5{
+					A: Inline2{
+						S: "1",
+						A: Inline3{
+							Inline4: Inline4{A: "11"},
+						},
+						B: Inline3{
+							Inline4: Inline4{A: "12"},
+						},
+					},
+					B: Inline2{
+						S: "2",
+						A: Inline3{
+							Inline4: Inline4{A: "21"},
+						},
+						B: Inline3{
+							Inline4: Inline4{A: "22"},
+						},
+					},
+				},
+			},
+			out: [][]string{
+				{"AS", "AAA", "S", "A"},
+				{"1", "11", "2", "22"},
+			},
+		},
+		{
+			desc: "cyclic inline - no prefix",
+			in: []interface{}{
+				Inline6{
+					A: Inline7{
+						A: &Inline6{A: Inline7{
+							A: &Inline6{},
+							X: 10,
+						}},
+						X: 1,
+					},
+				},
+			},
+			out: [][]string{
+				{"X"},
+				{"1"},
+			},
+		},
+		{
+			desc: "embedded with inline tag",
+			in: []interface{}{
+				struct {
+					Inline7 `csv:"A,inline"`
+				}{
+					Inline7: Inline7{
+						A: &Inline6{A: Inline7{
+							A: &Inline6{},
+							X: 10,
+						}},
+						X: 1,
+					},
+				},
+			},
+			out: [][]string{
+				{"AX"},
+				{"1"},
+			},
+		},
+		{
+			desc: "embedded with empty inline tag",
+			in: []interface{}{
+				struct {
+					Inline7 `csv:",inline"`
+				}{
+					Inline7: Inline7{
+						A: &Inline6{A: Inline7{
+							A: &Inline6{},
+							X: 10,
+						}},
+						X: 1,
+					},
+				},
+			},
+			out: [][]string{
+				{"X"},
+				{"1"},
+			},
+		},
+		{
+			desc: "embedded with ptr inline tag",
+			in: []interface{}{
+				struct {
+					*Inline7 `csv:"A,inline"`
+				}{
+					Inline7: &Inline7{
+						A: &Inline6{A: Inline7{
+							A: &Inline6{},
+							X: 10,
+						}},
+						X: 1,
+					},
+				},
+			},
+			out: [][]string{
+				{"AX"},
+				{"1"},
+			},
+		},
+		{
+			desc: "inline visibility rules - top field first",
+			in: []interface{}{
+				struct {
+					AA string
+					F  Inline4 `csv:"A,inline"`
+				}{
+					AA: "1",
+					F:  Inline4{A: "10"},
+				},
+			},
+			out: [][]string{
+				{"AA"},
+				{"1"},
+			},
+		},
+		{
+			desc: "inline visibility rules - top field last",
+			in: []interface{}{
+				Inline8{
+					F:  &Inline4{A: "10"},
+					AA: 1,
+				},
+			},
+			out: [][]string{
+				{"AA"},
+				{"1"},
+			},
+		},
+		{
+			desc: "ignore inline tag on non struct",
+			in: []interface{}{
+				struct {
+					X int `csv:",inline"`
+					Y int `csv:"y,inline"`
+				}{
+					X: 1,
+					Y: 2,
+				},
+			},
+			out: [][]string{
+				{"X", "y"},
+				{"1", "2"},
 			},
 		},
 		{
