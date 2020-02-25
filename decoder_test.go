@@ -119,6 +119,15 @@ type Embedded13 struct {
 	Embedded8
 }
 
+type Embedded17 struct {
+	*Embedded18
+}
+
+type Embedded18 struct {
+	X *float64
+	Y *float64
+}
+
 type TypeA struct {
 	Embedded1
 	String string `csv:"string"`
@@ -1093,6 +1102,26 @@ string,"{""key"":""value""}"
 			in:   "Invalid\n1",
 			out:  &struct{ Invalid interface{} }{Invalid: &InvalidType{}},
 			err:  &UnsupportedTypeError{Type: reflect.TypeOf(InvalidType{})},
+		},
+		{
+			desc: "no panic on embedded pointer fields with blank value",
+			in:   "X,Y\n,",
+			out:  &Embedded17{},
+			expected: &Embedded17{
+				Embedded18: &Embedded18{},
+			},
+			expectedRecord: []string{"", ""},
+			header:         []string{"X", "Y"},
+		},
+		{
+			desc: "no panic on embedded pointer fields with blank value 2",
+			in:   "X,Y\n1,",
+			out:  &Embedded17{},
+			expected: &Embedded17{
+				Embedded18: &Embedded18{X: pfloat64(1)},
+			},
+			expectedRecord: []string{"1", ""},
+			header:         []string{"X", "Y"},
 		},
 		{
 			desc: "fails on blank non float string with ptr embedded",

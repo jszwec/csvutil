@@ -280,24 +280,20 @@ func (d *Decoder) unmarshal(record []string, v reflect.Value) error {
 		return err
 	}
 
+fieldLoop:
 	for _, f := range fields {
-
 		isBlank := record[f.columnIndex] == ""
-
 		if f.tag.omitEmpty && isBlank {
 			continue
 		}
 
-		isPtr := false
-
 		fv := v
-		for _, i := range f.index {
+		for n, i := range f.index {
 			fv = fv.Field(i)
-			isPtr = fv.Kind() == reflect.Ptr
-			if isPtr {
+			if fv.Kind() == reflect.Ptr {
 				if fv.IsNil() {
-					if isBlank && !v.Type().Field(i).Anonymous {
-						continue
+					if isBlank && n == len(f.index)-1 { // ensure we are on the leaf.
+						continue fieldLoop
 					}
 					// this can happen if a field is an unexported embedded
 					// pointer type. In Go prior to 1.10 it was possible to
@@ -310,10 +306,6 @@ func (d *Decoder) unmarshal(record []string, v reflect.Value) error {
 				}
 				fv = fv.Elem()
 			}
-		}
-
-		if isPtr && isBlank {
-			continue
 		}
 
 		s := record[f.columnIndex]
