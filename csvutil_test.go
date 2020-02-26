@@ -834,7 +834,7 @@ func TestParity(t *testing.T) {
 		},
 		{
 			Int:      0,
-			Pint:     pint(0),
+			Pint:     nil,
 			OmitInt:  0,
 			OmitPint: nil,
 		},
