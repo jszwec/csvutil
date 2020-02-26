@@ -1114,6 +1114,24 @@ string,"{""key"":""value""}"
 			header:         []string{"X", "Y"},
 		},
 		{
+			desc: "set blank values to nil on pointers",
+			in:   "X,Y\n1,",
+			out: &Embedded17{
+				Embedded18: &Embedded18{
+					X: pfloat64(10),
+					Y: pfloat64(20),
+				},
+			},
+			expected: &Embedded17{
+				Embedded18: &Embedded18{
+					X: pfloat64(1),
+					Y: nil,
+				},
+			},
+			expectedRecord: []string{"1", ""},
+			header:         []string{"X", "Y"},
+		},
+		{
 			desc: "no panic on embedded pointer fields with blank value 2",
 			in:   "X,Y\n1,",
 			out:  &Embedded17{},
@@ -1146,7 +1164,9 @@ string,"{""key"":""value""}"
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,,3,,5,,7,,9,,11,,13,,15,,17,,19,,21,,23,,25,,true,,true,," +
 				EncodedBinary + "," + "",
-			out: &TypeF{},
+			out: &TypeF{
+				Pint: pint(10),
+			},
 			expected: &TypeF{
 				Int:      1,
 				Pint:     nil,

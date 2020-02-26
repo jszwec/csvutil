@@ -92,8 +92,7 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 // can be adjusted by using tags.
 //
 // The "omitempty" option specifies that the field should be omitted from
-// the decoding if record's field is an empty string. This option is enabled
-// by default on pointer fields.
+// the decoding if record's field is an empty string.
 //
 // Examples of struct field tags and their meanings:
 // 	// Decode matches this field with "myName" header column.
@@ -143,6 +142,8 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 //
 // Interface fields are decoded to strings unless they contain settable pointer
 // value.
+//
+// Pointer fields are decoded to nil if a string value is empty.
 //
 // If v is a slice, Decode resets it and reads the input until EOF, storing all
 // decoded values in the given slice. Decode returns nil on EOF.
@@ -305,6 +306,11 @@ fieldLoop:
 						return errPtrUnexportedStruct(fv.Type())
 					}
 					fv.Set(reflect.New(fv.Type().Elem()))
+				}
+
+				if isBlank && n == len(f.index)-1 { // ensure we are on the leaf.
+					fv.Set(reflect.Zero(fv.Type()))
+					continue fieldLoop
 				}
 				fv = fv.Elem()
 			}
