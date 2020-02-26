@@ -185,7 +185,7 @@ func Header(v interface{}, tag string) ([]string, error) {
 	fields := cachedFields(typeKey{tag, typ})
 	h := make([]string, len(fields))
 	for i, f := range fields {
-		h[i] = f.tag.name
+		h[i] = f.name
 	}
 	return h, nil
 }
