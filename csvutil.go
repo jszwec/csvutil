@@ -9,6 +9,11 @@ import (
 
 const defaultTag = "csv"
 
+var (
+	_bytes = reflect.TypeOf(([]byte)(nil))
+	_error = reflect.TypeOf((*error)(nil)).Elem()
+)
+
 // Unmarshal parses the CSV-encoded data and stores the result in the slice or
 // the array pointed to by v. If v is nil or not a pointer to a struct slice or
 // struct array, Unmarshal returns an InvalidUnmarshalError.

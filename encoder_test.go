@@ -2,6 +2,7 @@ package csvutil
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -41,6 +42,22 @@ func (m CSVMarshaler) MarshalCSV() ([]byte, error) {
 		return nil, m.Err
 	}
 	return []byte("csvmarshaler"), nil
+}
+
+type PtrRecCSVMarshaler int
+
+func (m *PtrRecCSVMarshaler) MarshalCSV() ([]byte, error) {
+	return []byte("ptrreccsvmarshaler"), nil
+}
+
+func (m *PtrRecCSVMarshaler) CSV() ([]byte, error) {
+	return []byte("ptrreccsvmarshaler.CSV"), nil
+}
+
+type PtrRecTextMarshaler int
+
+func (m *PtrRecTextMarshaler) MarshalText() ([]byte, error) {
+	return []byte("ptrrectextmarshaler"), nil
 }
 
 type TextMarshaler struct {
@@ -117,12 +134,17 @@ type TypeH struct {
 	V       interface{} `csv:"interface,omitempty"`
 }
 
+type TypeM struct {
+	*TextMarshaler `csv:"text"`
+}
+
 func TestEncoder(t *testing.T) {
 	fixtures := []struct {
-		desc string
-		in   []interface{}
-		out  [][]string
-		err  error
+		desc    string
+		in      []interface{}
+		regFunc []interface{}
+		out     [][]string
+		err     error
 	}{
 		{
 			desc: "test all types",
@@ -343,13 +365,6 @@ func TestEncoder(t *testing.T) {
 					A:          Embedded14{"key1": "val1"},
 				},
 				struct {
-					Embedded14 `csv:"json"`
-					A          Embedded14 `csv:"json2"`
-				}{
-					Embedded14: Embedded14{"key": "val"},
-					A:          Embedded14{"key1": "val1"},
-				},
-				struct {
 					*Embedded14 `csv:"json"`
 					A           *Embedded14 `csv:"json2"`
 				}{
@@ -360,7 +375,6 @@ func TestEncoder(t *testing.T) {
 			out: [][]string{
 				{"json", "json2"},
 				{`{"key":"val"}`, `{"key1":"val1"}`},
-				{``, ``},
 				{`{"key":"val"}`, `{"key1":"val1"}`},
 			},
 		},
@@ -368,13 +382,6 @@ func TestEncoder(t *testing.T) {
 			desc: "embedded non struct tagged types with pointer receiver MarshalText",
 			in: []interface{}{
 				&struct {
-					Embedded15 `csv:"json"`
-					A          Embedded15 `csv:"json2"`
-				}{
-					Embedded15: Embedded15{"key": "val"},
-					A:          Embedded15{"key1": "val1"},
-				},
-				struct {
 					Embedded15 `csv:"json"`
 					A          Embedded15 `csv:"json2"`
 				}{
@@ -392,7 +399,6 @@ func TestEncoder(t *testing.T) {
 			out: [][]string{
 				{"json", "json2"},
 				{`{"key":"val"}`, `{"key1":"val1"}`},
-				{``, ``},
 				{`{"key":"val"}`, `{"key1":"val1"}`},
 			},
 		},
@@ -439,7 +445,19 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
-			desc: "embedded non struct tagged pointer types with nil value",
+			desc: "embedded non struct tagged pointer types with nil value - textmarshaler",
+			in: []interface{}{
+				TypeM{
+					TextMarshaler: nil,
+				},
+			},
+			out: [][]string{
+				{"text"},
+				{""},
+			},
+		},
+		{
+			desc: "embedded non struct tagged pointer types with nil value - csvmarshaler",
 			in: []interface{}{
 				TypeD{
 					Embedded3: nil,
@@ -552,6 +570,62 @@ func TestEncoder(t *testing.T) {
 			out: [][]string{
 				{"Y", "X"},
 				{"2", "1"},
+			},
+		},
+		{
+			desc: "ptr receiver csv marshaler",
+			in: []interface{}{
+				&struct {
+					A PtrRecCSVMarshaler
+				}{},
+				struct {
+					A PtrRecCSVMarshaler
+				}{},
+				struct {
+					A *PtrRecCSVMarshaler
+				}{new(PtrRecCSVMarshaler)},
+				&struct {
+					A *PtrRecCSVMarshaler
+				}{new(PtrRecCSVMarshaler)},
+				&struct {
+					A *PtrRecCSVMarshaler
+				}{},
+			},
+			out: [][]string{
+				{"A"},
+				{"ptrreccsvmarshaler"},
+				{"0"},
+				{"ptrreccsvmarshaler"},
+				{"ptrreccsvmarshaler"},
+				{""},
+			},
+		},
+		{
+			desc: "ptr receiver text marshaler",
+			in: []interface{}{
+				&struct {
+					A PtrRecTextMarshaler
+				}{},
+				struct {
+					A PtrRecTextMarshaler
+				}{},
+				struct {
+					A *PtrRecTextMarshaler
+				}{new(PtrRecTextMarshaler)},
+				&struct {
+					A *PtrRecTextMarshaler
+				}{new(PtrRecTextMarshaler)},
+				&struct {
+					A *PtrRecTextMarshaler
+				}{},
+			},
+			out: [][]string{
+				{"A"},
+				{"ptrrectextmarshaler"},
+				{"0"},
+				{"ptrrectextmarshaler"},
+				{"ptrrectextmarshaler"},
+				{""},
 			},
 		},
 		{
@@ -803,6 +877,266 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			desc: "registered func - non ptr elem",
+			in: []interface{}{
+				struct {
+					Int    int
+					Pint   *int
+					Iface  interface{}
+					Piface *interface{}
+				}{
+					Pint:   pint(0),
+					Iface:  34,
+					Piface: pinterface(34),
+				},
+			},
+			regFunc: []interface{}{
+				func(int) ([]byte, error) { return []byte("int"), nil },
+			},
+			out: [][]string{
+				{"Int", "Pint", "Iface", "Piface"},
+				{"int", "int", "int", "int"},
+			},
+		},
+		{
+			desc: "registered func - ptr elem",
+			in: []interface{}{
+				&struct {
+					Int    int
+					Pint   *int
+					Iface  interface{}
+					Piface *interface{}
+				}{
+					Pint:   pint(0),
+					Iface:  34,
+					Piface: pinterface(34),
+				},
+			},
+			regFunc: []interface{}{
+				func(int) ([]byte, error) { return []byte("int"), nil },
+			},
+			out: [][]string{
+				{"Int", "Pint", "Iface", "Piface"},
+				{"int", "int", "int", "int"},
+			},
+		},
+		{
+			desc: "registered func - ptr type - non ptr elem",
+			in: []interface{}{
+				struct {
+					Int    int
+					Pint   *int
+					Iface  interface{}
+					Piface *interface{}
+				}{
+					Pint:   pint(0),
+					Iface:  34,
+					Piface: pinterface(pint(34)),
+				},
+			},
+			regFunc: []interface{}{
+				func(*int) ([]byte, error) { return []byte("int"), nil },
+			},
+			out: [][]string{
+				{"Int", "Pint", "Iface", "Piface"},
+				{"0", "int", "34", "int"},
+			},
+		},
+		{
+			desc: "registered func - ptr type - ptr elem",
+			in: []interface{}{
+				&struct {
+					Int    int
+					Pint   *int
+					Iface  interface{}
+					Piface *interface{}
+				}{
+					Pint:   pint(0),
+					Iface:  34,
+					Piface: pinterface(pint(34)),
+				},
+			},
+			regFunc: []interface{}{
+				func(*int) ([]byte, error) { return []byte("int"), nil },
+			},
+			out: [][]string{
+				{"Int", "Pint", "Iface", "Piface"},
+				{"int", "int", "34", "int"},
+			},
+		},
+		{
+			desc: "registered func - mixed types - non ptr elem",
+			in: []interface{}{
+				struct {
+					Int    int
+					Pint   *int
+					Iface  interface{}
+					Piface *interface{}
+				}{
+					Pint:   pint(0),
+					Iface:  34,
+					Piface: pinterface(pint(34)),
+				},
+			},
+			regFunc: []interface{}{
+				func(int) ([]byte, error) { return []byte("int"), nil },
+				func(*int) ([]byte, error) { return []byte("*int"), nil },
+			},
+			out: [][]string{
+				{"Int", "Pint", "Iface", "Piface"},
+				{"int", "*int", "int", "*int"},
+			},
+		},
+		{
+			desc: "registered func - mixed types - ptr elem",
+			in: []interface{}{
+				&struct {
+					Int    int
+					Pint   *int
+					Iface  interface{}
+					Piface *interface{}
+				}{
+					Pint:   pint(0),
+					Iface:  34,
+					Piface: pinterface(pint(34)),
+				},
+			},
+			regFunc: []interface{}{
+				func(int) ([]byte, error) { return []byte("int"), nil },
+				func(*int) ([]byte, error) { return []byte("*int"), nil },
+			},
+			out: [][]string{
+				{"Int", "Pint", "Iface", "Piface"},
+				{"int", "*int", "int", "*int"},
+			},
+		},
+		{
+			desc: "registered func - interfaces",
+			in: []interface{}{
+				&struct {
+					CSVMarshaler        Marshaler
+					Marshaler           CSVMarshaler
+					PMarshaler          *CSVMarshaler
+					CSVTextMarshaler    CSVTextMarshaler
+					PCSVTextMarshaler   *CSVTextMarshaler
+					PtrRecCSVMarshaler  PtrRecCSVMarshaler
+					PtrRecTextMarshaler PtrRecTextMarshaler
+				}{
+					PMarshaler:        &CSVMarshaler{},
+					PCSVTextMarshaler: &CSVTextMarshaler{},
+				},
+			},
+			regFunc: []interface{}{
+				func(Marshaler) ([]byte, error) { return []byte("registered.marshaler"), nil },
+				func(encoding.TextMarshaler) ([]byte, error) { return []byte("registered.textmarshaler"), nil },
+			},
+			out: [][]string{
+				{"CSVMarshaler", "Marshaler", "PMarshaler", "CSVTextMarshaler", "PCSVTextMarshaler", "PtrRecCSVMarshaler", "PtrRecTextMarshaler"},
+				{"registered.marshaler", "registered.marshaler", "registered.marshaler", "registered.marshaler", "registered.marshaler", "registered.marshaler", "registered.textmarshaler"},
+			},
+		},
+		{
+			desc: "registered func - interface order",
+			in: []interface{}{
+				&struct {
+					CSVTextMarshaler  CSVTextMarshaler
+					PCSVTextMarshaler *CSVTextMarshaler
+				}{
+					PCSVTextMarshaler: &CSVTextMarshaler{},
+				},
+			},
+			regFunc: []interface{}{
+				func(encoding.TextMarshaler) ([]byte, error) { return []byte("registered.textmarshaler"), nil },
+				func(Marshaler) ([]byte, error) { return []byte("registered.marshaler"), nil },
+			},
+			out: [][]string{
+				{"CSVTextMarshaler", "PCSVTextMarshaler"},
+				{"registered.textmarshaler", "registered.textmarshaler"},
+			},
+		},
+		{
+			desc: "registered func - method",
+			in: []interface{}{
+				&struct {
+					PtrRecCSVMarshaler PtrRecCSVMarshaler
+				}{},
+				struct {
+					PtrRecCSVMarshaler PtrRecCSVMarshaler
+				}{},
+			},
+			regFunc: []interface{}{
+				(*PtrRecCSVMarshaler).CSV,
+			},
+			out: [][]string{
+				{"PtrRecCSVMarshaler"},
+				{"ptrreccsvmarshaler.CSV"},
+				{"0"},
+			},
+		},
+		{
+			desc: "registered func - fallback error",
+			in: []interface{}{
+				struct {
+					Embedded14
+				}{},
+			},
+			regFunc: []interface{}{
+				(*Embedded14).MarshalCSV,
+			},
+			err: &UnsupportedTypeError{
+				Type: reflect.TypeOf(Embedded14{}),
+			},
+		},
+		{
+			desc: "registered interface func - returning error",
+			in: []interface{}{
+				&struct {
+					Embedded14 Embedded14
+				}{},
+			},
+			regFunc: []interface{}{
+				func(Marshaler) ([]byte, error) { return nil, Error },
+			},
+			err: Error,
+		},
+		{
+			desc: "registered func - returning error",
+			in: []interface{}{
+				&struct {
+					A InvalidType
+				}{},
+			},
+			regFunc: []interface{}{
+				func(*InvalidType) ([]byte, error) { return nil, Error },
+			},
+			err: Error,
+		},
+		{
+			desc: "registered func - fallback error on interface",
+			in: []interface{}{
+				struct {
+					Embedded14
+				}{},
+			},
+			regFunc: []interface{}{
+				func(m Marshaler) ([]byte, error) { return nil, nil },
+			},
+			err: &UnsupportedTypeError{
+				Type: reflect.TypeOf(Embedded14{}),
+			},
+		},
+		{
+			desc: "marshaler fallback error",
+			in: []interface{}{
+				struct {
+					Embedded14
+				}{},
+			},
+			err: &UnsupportedTypeError{
+				Type: reflect.TypeOf(Embedded14{}),
+			},
+		},
+		{
 			desc: "encode different types",
 			// This doesnt mean the output csv is valid. Generally this is an invalid
 			// use. However, we need to make sure that the encoder is doing what it is
@@ -876,6 +1210,21 @@ func TestEncoder(t *testing.T) {
 				}()},
 				struct {
 					V interface{}
+				}{
+					V: func() interface{} {
+						return PtrRecCSVMarshaler(5)
+					}(),
+				},
+				struct {
+					V interface{}
+				}{
+					V: func() interface{} {
+						m := PtrRecCSVMarshaler(5)
+						return &m
+					}(),
+				},
+				struct {
+					V interface{}
 				}{func() interface{} {
 					var v interface{}
 					var vv interface{} = v
@@ -893,6 +1242,8 @@ func TestEncoder(t *testing.T) {
 				{"csvmarshaler"},
 				{"csvmarshaler"},
 				{"csvmarshaler"},
+				{"5"},
+				{"ptrreccsvmarshaler"},
 				{""},
 			},
 		},
@@ -946,6 +1297,20 @@ func TestEncoder(t *testing.T) {
 			err: &MarshalerError{Type: reflect.TypeOf(CSVMarshaler{}), MarshalerType: "MarshalCSV", Err: Error},
 		},
 		{
+			desc: "csv marshaler error as registered error",
+			in: []interface{}{
+				struct {
+					A CSVMarshaler
+				}{
+					A: CSVMarshaler{Err: Error},
+				},
+			},
+			regFunc: []interface{}{
+				CSVMarshaler.MarshalCSV,
+			},
+			err: Error,
+		},
+		{
 			desc: "text marshaler error",
 			in: []interface{}{
 				struct {
@@ -955,6 +1320,29 @@ func TestEncoder(t *testing.T) {
 				},
 			},
 			err: &MarshalerError{Type: reflect.TypeOf(TextMarshaler{}), MarshalerType: "MarshalText", Err: Error},
+		},
+		{
+			desc: "text marshaler fallback error - ptr reciever",
+			in: []interface{}{
+				struct {
+					A Embedded15
+				}{},
+			},
+			err: &UnsupportedTypeError{Type: reflect.TypeOf(Embedded15{})},
+		},
+		{
+			desc: "text marshaler error as registered func",
+			in: []interface{}{
+				struct {
+					A TextMarshaler
+				}{
+					A: TextMarshaler{Err: Error},
+				},
+			},
+			regFunc: []interface{}{
+				TextMarshaler.MarshalText,
+			},
+			err: Error,
 		},
 		{
 			desc: "unsupported type",
@@ -1016,6 +1404,11 @@ func TestEncoder(t *testing.T) {
 			var buf bytes.Buffer
 			w := csv.NewWriter(&buf)
 			enc := NewEncoder(w)
+
+			for _, f := range f.regFunc {
+				enc.Register(f)
+			}
+
 			for _, v := range f.in {
 				err := enc.Encode(v)
 				if f.err != nil {

@@ -6,10 +6,11 @@ import (
 )
 
 type field struct {
-	name  string
-	typ   reflect.Type
-	tag   tag
-	index []int
+	name     string
+	baseType reflect.Type
+	typ      reflect.Type
+	tag      tag
+	index    []int
 }
 
 type fields []field
@@ -129,10 +130,11 @@ func buildFields(k typeKey) fields {
 			}
 
 			newf := field{
-				name:  tag.prefix + tag.name,
-				typ:   ft,
-				tag:   tag,
-				index: makeIndex(f.index, i),
+				name:     tag.prefix + tag.name,
+				baseType: sf.Type,
+				typ:      ft,
+				tag:      tag,
+				index:    makeIndex(f.index, i),
 			}
 
 			if sf.Anonymous && ft.Kind() == reflect.Struct && tag.empty {
@@ -156,10 +158,11 @@ func buildFields(k typeKey) fields {
 				if v.typ == f.typ && v.tag.prefix == tag.prefix {
 					// other nodes can have different path.
 					fm.insert(field{
-						name:  tag.prefix + tag.name,
-						typ:   ft,
-						tag:   tag,
-						index: makeIndex(v.index, i),
+						name:     tag.prefix + tag.name,
+						baseType: sf.Type,
+						typ:      ft,
+						tag:      tag,
+						index:    makeIndex(v.index, i),
 					})
 				}
 			}

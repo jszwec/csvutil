@@ -376,7 +376,21 @@ int,10
 
 Type [time.Time](https://golang.org/pkg/time/#Time) can be used as is in the struct fields by both Decoder and Encoder
 due to the fact that both have builtin support for [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) and [encoding.TextMarshaler](https://golang.org/pkg/encoding/#TextMarshaler). This means that by default
-Time has a specific format; look at [MarshalText](https://golang.org/pkg/time/#Time.MarshalText) and [UnmarshalText](https://golang.org/pkg/time/#Time.UnmarshalText). This example shows how to override it.
+Time has a specific format; look at [MarshalText](https://golang.org/pkg/time/#Time.MarshalText) and [UnmarshalText](https://golang.org/pkg/time/#Time.UnmarshalText). There are two ways to override it, which one you choose depends on your use case:
+
+1. Via Register func (based on encoding/json)
+```go
+const format = "2006/01/02 15:04:05"
+
+marshalTime := func(t time.Time) ([]byte, error) {
+	return t.AppendFormat(nil, format), nil
+}
+
+enc := csvutil.NewEncoder(r)
+enc.Register(marshalTime)
+```
+
+2. With custom type:
 ```go
 type Time struct {
 	time.Time

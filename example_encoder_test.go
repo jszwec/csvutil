@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/jszwec/csvutil"
 )
@@ -147,4 +149,61 @@ func ExampleEncoder_Encode_inline() {
 	// Output:
 	// name,street,city,home_address_street,home_address_city,work_address_street,work_address_city,age
 	// John,Washington,Boston,Boylston,Boston,River St,Cambridge,26
+}
+
+func ExampleEncoder_Register() {
+	type Foo struct {
+		Time   time.Time     `csv:"time"`
+		Hex    int           `csv:"hex"`
+		PtrHex *int          `csv:"ptr_hex"`
+		Buffer *bytes.Buffer `csv:"buffer"`
+	}
+
+	foos := []Foo{
+		{
+			Time:   time.Date(2020, 6, 20, 12, 0, 0, 0, time.UTC),
+			Hex:    15,
+			Buffer: bytes.NewBufferString("hello"),
+		},
+	}
+
+	marshalInt := func(n *int) ([]byte, error) {
+		if n == nil {
+			return []byte("NULL"), nil
+		}
+		return strconv.AppendInt(nil, int64(*n), 16), nil
+	}
+
+	marshalTime := func(t time.Time) ([]byte, error) {
+		return t.AppendFormat(nil, time.Kitchen), nil
+	}
+
+	// all fields which implement String method will use this, unless their
+	// concrete type was already overriden.
+	marshalStringer := func(s fmt.Stringer) ([]byte, error) {
+		return []byte(s.String()), nil
+	}
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	enc := csvutil.NewEncoder(w)
+
+	enc.Register(marshalInt)
+	enc.Register(marshalTime)
+	enc.Register(marshalStringer)
+
+	if err := enc.Encode(foos); err != nil {
+		fmt.Println("error:", err)
+	}
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		fmt.Println("error:", err)
+	}
+
+	fmt.Println(buf.String())
+
+	// Output:
+	// time,hex,ptr_hex,buffer
+	// 12:00PM,f,NULL,hello
 }

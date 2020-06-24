@@ -18,12 +18,12 @@ type encCache struct {
 	record []string
 }
 
-func newEncCache(k typeKey) (*encCache, error) {
+func newEncCache(k typeKey, funcMap map[reflect.Type]reflect.Value, funcs []reflect.Value) (_ *encCache, err error) {
 	fields := cachedFields(k)
 	encFields := make([]encField, len(fields))
 
 	for i, f := range fields {
-		fn, err := encodeFn(f.typ)
+		fn, err := encodeFn(f.baseType, true, funcMap, funcs)
 		if err != nil {
 			return nil, err
 		}
@@ -51,10 +51,12 @@ type Encoder struct {
 	// to Encode automatically (Default: true).
 	AutoHeader bool
 
-	w        Writer
-	c        *encCache
-	noHeader bool
-	typeKey  typeKey
+	w          Writer
+	c          *encCache
+	noHeader   bool
+	typeKey    typeKey
+	funcMap    map[reflect.Type]reflect.Value
+	ifaceFuncs []reflect.Value
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -63,6 +65,55 @@ func NewEncoder(w Writer) *Encoder {
 		w:          w,
 		noHeader:   true,
 		AutoHeader: true,
+	}
+}
+
+// Register registers a custom encoding function for a concrete type or interface.
+// The argument f must be of type:
+// 	func(T) ([]byte, error).
+//
+// T must be a concrete type such as Foo or *Foo, or interface that has at
+// least one method.
+//
+// During encoding, fields are matched by the concrete type first. If match is not
+// found then Encoder looks if field implements any of the registered interfaces
+// in order they were registered.
+//
+// Register panics if:
+//	- f does not match the right signature
+//	- f is an empty interface
+//	- f was already registered
+//
+// Register is based on the encoding/json proposal:
+// https://github.com/golang/go/issues/5901.
+func (e *Encoder) Register(f interface{}) {
+	v := reflect.ValueOf(f)
+	typ := v.Type()
+
+	if typ.Kind() != reflect.Func ||
+		typ.NumIn() != 1 || typ.NumOut() != 2 ||
+		typ.Out(0) != _bytes || typ.Out(1) != _error {
+		panic("csvutil: func must be of type func(T) ([]byte, error)")
+	}
+
+	argType := typ.In(0)
+
+	if argType.Kind() == reflect.Interface && argType.NumMethod() == 0 {
+		panic("csvutil: func argument type must not be an empty interface")
+	}
+
+	if e.funcMap == nil {
+		e.funcMap = make(map[reflect.Type]reflect.Value)
+	}
+
+	if _, ok := e.funcMap[typ]; ok {
+		panic("csvutil: func " + typ.String() + " already registered")
+	}
+
+	e.funcMap[argType] = v
+
+	if argType.Kind() == reflect.Interface {
+		e.ifaceFuncs = append(e.ifaceFuncs, v)
 	}
 }
 
@@ -229,7 +280,6 @@ func (e *Encoder) marshal(v reflect.Value) error {
 			omitempty = false
 		}
 
-		v = walkPtr(v)
 		if !v.IsValid() {
 			index[i] = 0
 			continue
@@ -260,7 +310,7 @@ func (e *Encoder) tag() string {
 
 func (e *Encoder) cache(typ reflect.Type) ([]encField, []byte, []int, []string, error) {
 	if k := (typeKey{e.tag(), typ}); k != e.typeKey {
-		c, err := newEncCache(k)
+		c, err := newEncCache(k, e.funcMap, e.ifaceFuncs)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
