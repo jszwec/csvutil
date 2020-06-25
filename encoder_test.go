@@ -2040,6 +2040,81 @@ func TestEncoder(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("register panics", func(t *testing.T) {
+		var buf bytes.Buffer
+		r := csv.NewWriter(&buf)
+		enc := NewEncoder(r)
+
+		fixtures := []struct {
+			desc string
+			arg  interface{}
+		}{
+			{
+				desc: "not a func",
+				arg:  1,
+			},
+			{
+				desc: "nil",
+				arg:  nil,
+			},
+			{
+				desc: "T == empty interface",
+				arg:  func(interface{}) ([]byte, error) { return nil, nil },
+			},
+			{
+				desc: "first out not bytes",
+				arg:  func(int) (int, error) { return 0, nil },
+			},
+			{
+				desc: "second out not error",
+				arg:  func(int) (int, int) { return 0, 0 },
+			},
+			{
+				desc: "func with one out value",
+				arg:  func(int) error { return nil },
+			},
+			{
+				desc: "func with no returns",
+				arg:  func(int) {},
+			},
+		}
+
+		for _, f := range fixtures {
+			t.Run(f.desc, func(t *testing.T) {
+				var e interface{}
+				func() {
+					defer func() {
+						e = recover()
+					}()
+					enc.Register(f.arg)
+				}()
+
+				if e == nil {
+					t.Error("Register was supposed to panic but it didnt")
+				}
+				t.Log(e)
+			})
+		}
+
+		t.Run("already registered", func(t *testing.T) {
+			f := func(int) ([]byte, error) { return nil, nil }
+			enc.Register(f)
+
+			var e interface{}
+			func() {
+				defer func() {
+					e = recover()
+				}()
+				enc.Register(f)
+			}()
+
+			if e == nil {
+				t.Error("Register was supposed to panic but it didnt")
+			}
+			t.Log(e)
+		})
+	})
 }
 
 func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {

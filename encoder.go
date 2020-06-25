@@ -106,7 +106,7 @@ func (e *Encoder) Register(f interface{}) {
 		e.funcMap = make(map[reflect.Type]reflect.Value)
 	}
 
-	if _, ok := e.funcMap[typ]; ok {
+	if _, ok := e.funcMap[argType]; ok {
 		panic("csvutil: func " + typ.String() + " already registered")
 	}
 
