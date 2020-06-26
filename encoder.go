@@ -70,7 +70,7 @@ func NewEncoder(w Writer) *Encoder {
 
 // Register registers a custom encoding function for a concrete type or interface.
 // The argument f must be of type:
-// 	func(T) ([]byte, error).
+// 	func(T) ([]byte, error)
 //
 // T must be a concrete type such as Foo or *Foo, or interface that has at
 // least one method.

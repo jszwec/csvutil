@@ -33,6 +33,34 @@ var (
 
 type decodeFunc func(s string, v reflect.Value) error
 
+func decodeFuncValue(f reflect.Value) decodeFunc {
+	isIface := f.Type().In(1).Kind() == reflect.Interface
+
+	return func(s string, v reflect.Value) error {
+		if isIface && v.Type().Kind() == reflect.Interface && v.IsNil() {
+			return &UnmarshalTypeError{Value: s, Type: v.Type()}
+		}
+
+		out := f.Call([]reflect.Value{
+			reflect.ValueOf([]byte(s)),
+			v,
+		})
+		err, _ := out[0].Interface().(error)
+		return err
+	}
+}
+
+func decodeFuncValuePtr(f reflect.Value) decodeFunc {
+	return func(s string, v reflect.Value) error {
+		out := f.Call([]reflect.Value{
+			reflect.ValueOf([]byte(s)),
+			v.Addr(),
+		})
+		err, _ := out[0].Interface().(error)
+		return err
+	}
+}
+
 func decodeString(s string, v reflect.Value) error {
 	v.SetString(s)
 	return nil
@@ -96,8 +124,8 @@ func decodeFieldUnmarshaler(s string, v reflect.Value) error {
 	return v.Interface().(Unmarshaler).UnmarshalCSV([]byte(s))
 }
 
-func decodePtr(typ reflect.Type) (decodeFunc, error) {
-	next, err := decodeFn(typ.Elem())
+func decodePtr(typ reflect.Type, funcMap map[reflect.Type]reflect.Value, ifaceFuncs []reflect.Value) (decodeFunc, error) {
+	next, err := decodeFn(typ.Elem(), funcMap, ifaceFuncs)
 	if err != nil {
 		return nil, err
 	}
@@ -110,30 +138,52 @@ func decodePtr(typ reflect.Type) (decodeFunc, error) {
 	}, nil
 }
 
-func decodeInterface(s string, v reflect.Value) error {
-	if v.NumMethod() != 0 {
-		return &UnmarshalTypeError{
-			Value: s,
-			Type:  v.Type(),
+func decodeInterface(funcMap map[reflect.Type]reflect.Value, ifaceFuncs []reflect.Value) decodeFunc {
+	return func(s string, v reflect.Value) error {
+		if v.NumMethod() != 0 {
+			return &UnmarshalTypeError{
+				Value: s,
+				Type:  v.Type(),
+			}
 		}
-	}
 
-	if v.IsNil() {
-		v.Set(reflect.ValueOf(s))
-		return nil
-	}
+		if v.IsNil() {
+			v.Set(reflect.ValueOf(s))
+			return nil
+		}
 
-	el := walkValue(v)
-	if !el.CanSet() {
-		v.Set(reflect.ValueOf(s))
-		return nil
-	}
+		el := walkValue(v)
+		if !el.CanSet() {
+			if el.IsValid() {
+				// we may get a value receiver unmarshalers or registered funcs
+				// underneath the interface in which case we should call
+				// Unmarshal/Registered func.
+				typ := el.Type()
+				if f, ok := funcMap[typ]; ok {
+					return decodeFuncValue(f)(s, el)
+				}
+				for _, f := range ifaceFuncs {
+					if typ.AssignableTo(f.Type().In(1)) {
+						return decodeFuncValue(f)(s, el)
+					}
+				}
+				if typ.Implements(csvUnmarshaler) {
+					return decodeFieldUnmarshaler(s, el)
+				}
+				if typ.Implements(textUnmarshaler) {
+					return decodeTextUnmarshaler(s, el)
+				}
+			}
+			v.Set(reflect.ValueOf(s))
+			return nil
+		}
 
-	fn, err := decodeFn(el.Type())
-	if err != nil {
-		return err
+		fn, err := decodeFn(el.Type(), funcMap, ifaceFuncs)
+		if err != nil {
+			return err
+		}
+		return fn(s, el)
 	}
-	return fn(s, el)
 }
 
 func decodeBytes(s string, v reflect.Value) error {
@@ -145,7 +195,24 @@ func decodeBytes(s string, v reflect.Value) error {
 	return nil
 }
 
-func decodeFn(typ reflect.Type) (decodeFunc, error) {
+func decodeFn(typ reflect.Type, funcMap map[reflect.Type]reflect.Value, ifaceFuncs []reflect.Value) (decodeFunc, error) {
+	if f, ok := funcMap[typ]; ok {
+		return decodeFuncValue(f), nil
+	}
+	if f, ok := funcMap[reflect.PtrTo(typ)]; ok {
+		return decodeFuncValuePtr(f), nil
+	}
+
+	for _, f := range ifaceFuncs {
+		argType := f.Type().In(1)
+		if typ.AssignableTo(argType) {
+			return decodeFuncValue(f), nil
+		}
+		if reflect.PtrTo(typ).AssignableTo(argType) {
+			return decodeFuncValuePtr(f), nil
+		}
+	}
+
 	if reflect.PtrTo(typ).Implements(csvUnmarshaler) {
 		return decodePtrFieldUnmarshaler, nil
 	}
@@ -155,9 +222,9 @@ func decodeFn(typ reflect.Type) (decodeFunc, error) {
 
 	switch typ.Kind() {
 	case reflect.Ptr:
-		return decodePtr(typ)
+		return decodePtr(typ, funcMap, ifaceFuncs)
 	case reflect.Interface:
-		return decodeInterface, nil
+		return decodeInterface(funcMap, ifaceFuncs), nil
 	case reflect.String:
 		return decodeString, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:

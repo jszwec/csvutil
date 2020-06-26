@@ -386,8 +386,23 @@ marshalTime := func(t time.Time) ([]byte, error) {
 	return t.AppendFormat(nil, format), nil
 }
 
-enc := csvutil.NewEncoder(r)
+unmarshalTime := func(data []byte, t *time.Time) error {
+	tt, err := time.Parse(format, string(data))
+	if err != nil {
+		return err
+	}
+	*t = tt
+	return nil
+}
+
+enc := csvutil.NewEncoder(w)
 enc.Register(marshalTime)
+
+dec, err := csvutil.NewDecoder(r)
+if err != nil {
+	return err
+}
+dec.Register(unmarshalTime)
 ```
 
 2. With custom type:

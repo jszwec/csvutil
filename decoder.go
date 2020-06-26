@@ -40,13 +40,15 @@ type Decoder struct {
 	// Map must be set before the first call to Decode and not changed after it.
 	Map func(field, col string, v interface{}) string
 
-	r       Reader
-	typeKey typeKey
-	hmap    map[string]int
-	header  []string
-	record  []string
-	cache   []decField
-	unused  []int
+	r          Reader
+	typeKey    typeKey
+	hmap       map[string]int
+	header     []string
+	record     []string
+	cache      []decField
+	unused     []int
+	funcMap    map[reflect.Type]reflect.Value
+	ifaceFuncs []reflect.Value
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -206,6 +208,55 @@ func (d *Decoder) Unused() []int {
 	return indices
 }
 
+// Register registers a custom decoding function for a concrete type or interface.
+// The argument f must be of type:
+// 	func([]byte, T) error
+//
+// T must be a concrete type such as *time.Time, or interface that has at least one
+// method.
+//
+// During decoding, fields are matched by the concrete type first. If match is not
+// found then Decoder looks if field implements any of the registered interfaces
+// in order they were registered.
+//
+// Register panics if:
+//	- f does not match the right signature
+//	- f is an empty interface
+//	- f was already registered
+//
+// Register is based on the encoding/json proposal:
+// https://github.com/golang/go/issues/5901.
+func (d *Decoder) Register(f interface{}) {
+	v := reflect.ValueOf(f)
+	typ := v.Type()
+
+	if typ.Kind() != reflect.Func ||
+		typ.NumIn() != 2 || typ.NumOut() != 1 ||
+		typ.In(0) != _bytes || typ.Out(0) != _error {
+		panic("csvutil: func must be of type func([]byte, T) error")
+	}
+
+	argType := typ.In(1)
+
+	if argType.Kind() == reflect.Interface && argType.NumMethod() == 0 {
+		panic("csvutil: func argument type must not be an empty interface")
+	}
+
+	if d.funcMap == nil {
+		d.funcMap = make(map[reflect.Type]reflect.Value)
+	}
+
+	if _, ok := d.funcMap[argType]; ok {
+		panic("csvutil: func " + typ.String() + " already registered")
+	}
+
+	d.funcMap[argType] = v
+
+	if argType.Kind() == reflect.Interface {
+		d.ifaceFuncs = append(d.ifaceFuncs, v)
+	}
+}
+
 func (d *Decoder) decodeSlice(slice reflect.Value) error {
 	typ := slice.Type().Elem()
 	if walkType(typ).Kind() != reflect.Struct {
@@ -312,14 +363,17 @@ fieldLoop:
 					fv.Set(reflect.Zero(fv.Type()))
 					continue fieldLoop
 				}
-				fv = fv.Elem()
+
+				if n != len(f.index)-1 {
+					fv = fv.Elem() // walk pointer until we are on the the leaf.
+				}
 			}
 		}
 
 		s := record[f.columnIndex]
 		if d.Map != nil && f.zero != nil {
 			zero := f.zero
-			if fv.Kind() == reflect.Interface && !fv.IsNil() {
+			if fv := walkPtr(fv); fv.Kind() == reflect.Interface && !fv.IsNil() {
 				if v := walkValue(fv); v.CanSet() {
 					zero = reflect.Zero(v.Type()).Interface()
 				}
@@ -349,7 +403,7 @@ func (d *Decoder) fields(k typeKey) ([]decField, error) {
 			continue
 		}
 
-		fn, err := decodeFn(f.typ)
+		fn, err := decodeFn(f.baseType, d.funcMap, d.ifaceFuncs)
 		if err != nil {
 			return nil, err
 		}

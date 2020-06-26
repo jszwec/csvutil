@@ -5,11 +5,15 @@ import (
 	"encoding/base64"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"math"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
+	"unicode"
 )
 
 var Binary = []byte("binary-data")
@@ -51,6 +55,54 @@ func (e *Enum) UnmarshalCSV(data []byte) error {
 	default:
 		*e = EnumDefault
 	}
+	return nil
+}
+
+type ValueRecUnmarshaler struct {
+	Buf *bytes.Buffer
+}
+
+func (u ValueRecUnmarshaler) UnmarshalCSV(data []byte) error {
+	u.Buf.Write(data)
+	return nil
+}
+
+func (u ValueRecUnmarshaler) Scan(data []byte) error {
+	u.Buf.WriteString("scan: ")
+	u.Buf.Write(data)
+	return nil
+}
+
+type ValueRecTextUnmarshaler struct {
+	Buf *bytes.Buffer
+}
+
+func (u ValueRecTextUnmarshaler) UnmarshalText(text []byte) error {
+	u.Buf.Write(text)
+	return nil
+}
+
+type IntStruct struct {
+	Value int
+}
+
+func (i *IntStruct) Scan(state fmt.ScanState, verb rune) error {
+	switch verb {
+	case 'd', 'v':
+	default:
+		return errors.New("unsupported verb")
+	}
+
+	t, err := state.Token(false, unicode.IsDigit)
+	if err != nil {
+		return err
+	}
+
+	n, err := strconv.Atoi(string(t))
+	if err != nil {
+		return err
+	}
+	*i = IntStruct{Value: n}
 	return nil
 }
 
@@ -330,6 +382,7 @@ func TestDecoder(t *testing.T) {
 	fixtures := []struct {
 		desc           string
 		in             string
+		regFuncs       []interface{}
 		out            interface{}
 		expected       interface{}
 		expectedRecord []string
@@ -507,6 +560,125 @@ string,"{""key"":""value""}"
 			header:         []string{"String"},
 			unused:         []int{0},
 		},
+		{
+			desc: "decode value receiver unmarshalers",
+			in:   "1,2,3\n1,2,3",
+			out: &struct {
+				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+				Iface                  interface{}          `csv:"3"`
+			}{
+				ValueRecUnmarshaler{new(bytes.Buffer)},
+				&ValueRecUnmarshaler{new(bytes.Buffer)},
+				ValueRecUnmarshaler{new(bytes.Buffer)},
+			},
+			expected: &struct {
+				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+				Iface                  interface{}          `csv:"3"`
+			}{
+				ValueRecUnmarshaler{bytes.NewBufferString("1")},
+				&ValueRecUnmarshaler{bytes.NewBufferString("2")},
+				ValueRecUnmarshaler{bytes.NewBufferString("3")},
+			},
+			expectedRecord: []string{"1", "2", "3"},
+			header:         []string{"1", "2", "3"},
+		},
+		{
+			desc: "decode value receiver registered func",
+			in:   "1,2,3,4\n1,2,3,4",
+			out: &struct {
+				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+				Iface                  interface{}          `csv:"3"`
+				Iface2                 interface{}          `csv:"4"`
+			}{
+				ValueRecUnmarshaler{new(bytes.Buffer)},
+				&ValueRecUnmarshaler{new(bytes.Buffer)},
+				ValueRecUnmarshaler{new(bytes.Buffer)},
+				&ValueRecUnmarshaler{new(bytes.Buffer)},
+			},
+			expected: &struct {
+				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+				Iface                  interface{}          `csv:"3"`
+				Iface2                 interface{}          `csv:"4"`
+			}{
+				ValueRecUnmarshaler{bytes.NewBufferString("scan: 1")},
+				&ValueRecUnmarshaler{bytes.NewBufferString("scan: 2")},
+				ValueRecUnmarshaler{bytes.NewBufferString("scan: 3")},
+				&ValueRecUnmarshaler{bytes.NewBufferString("scan: 4")},
+			},
+			regFuncs: []interface{}{
+				func(data []byte, v ValueRecUnmarshaler) error {
+					return v.Scan(data)
+				},
+			},
+			expectedRecord: []string{"1", "2", "3", "4"},
+			header:         []string{"1", "2", "3", "4"},
+		},
+		{
+			desc: "decode value receiver registered func - T is interface",
+			in:   "1,2,3,4\n1,2,3,4",
+			out: &struct {
+				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+				Iface                  interface{}          `csv:"3"`
+				Iface2                 interface{}          `csv:"4"`
+			}{
+				ValueRecUnmarshaler{new(bytes.Buffer)},
+				&ValueRecUnmarshaler{new(bytes.Buffer)},
+				ValueRecUnmarshaler{new(bytes.Buffer)},
+				&ValueRecUnmarshaler{new(bytes.Buffer)},
+			},
+			expected: &struct {
+				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+				Iface                  interface{}          `csv:"3"`
+				Iface2                 interface{}          `csv:"4"`
+			}{
+				ValueRecUnmarshaler{bytes.NewBufferString("scan: 1")},
+				&ValueRecUnmarshaler{bytes.NewBufferString("scan: 2")},
+				ValueRecUnmarshaler{bytes.NewBufferString("scan: 3")},
+				&ValueRecUnmarshaler{bytes.NewBufferString("scan: 4")},
+			},
+			regFuncs: []interface{}{
+				func(data []byte, v interface{ Scan([]byte) error }) error {
+					return v.Scan(data)
+				},
+			},
+			expectedRecord: []string{"1", "2", "3", "4"},
+			header:         []string{"1", "2", "3", "4"},
+		},
+		{
+			desc: "decode value receiver textmarshaler",
+			in:   "1,2,3,4\n1,2,3,4",
+			out: &struct {
+				ValueRecTextUnmarshaler    ValueRecTextUnmarshaler  `csv:"1"`
+				PtrValueRecTextUnmarshaler *ValueRecTextUnmarshaler `csv:"2"`
+				Iface                      interface{}              `csv:"3"`
+				Iface2                     interface{}              `csv:"4"`
+			}{
+				ValueRecTextUnmarshaler{new(bytes.Buffer)},
+				&ValueRecTextUnmarshaler{new(bytes.Buffer)},
+				ValueRecTextUnmarshaler{new(bytes.Buffer)},
+				&ValueRecTextUnmarshaler{new(bytes.Buffer)},
+			},
+			expected: &struct {
+				ValueRecTextUnmarshaler    ValueRecTextUnmarshaler  `csv:"1"`
+				PtrValueRecTextUnmarshaler *ValueRecTextUnmarshaler `csv:"2"`
+				Iface                      interface{}              `csv:"3"`
+				Iface2                     interface{}              `csv:"4"`
+			}{
+				ValueRecTextUnmarshaler{bytes.NewBufferString("1")},
+				&ValueRecTextUnmarshaler{bytes.NewBufferString("2")},
+				ValueRecTextUnmarshaler{bytes.NewBufferString("3")},
+				&ValueRecTextUnmarshaler{bytes.NewBufferString("4")},
+			},
+			expectedRecord: []string{"1", "2", "3", "4"},
+			header:         []string{"1", "2", "3", "4"},
+		},
+
 		{
 			desc: "decode unmarshalers",
 			in:   "csv,pcsv,text,ptext,csv-text,pcsv-text\nfield,field,field,field,field,field",
@@ -1238,6 +1410,158 @@ string,"{""key"":""value""}"
 				"pbinary",
 			},
 		},
+		{
+			desc: "registered func",
+			in:   "Int,Pint,Iface,Piface\na,b,c,d",
+			out: &struct {
+				Int    int
+				Pint   *int
+				Iface  interface{}
+				Piface *interface{}
+			}{Iface: pint(10), Piface: pinterface(pint(10))},
+			expected: &struct {
+				Int    int
+				Pint   *int
+				Iface  interface{}
+				Piface *interface{}
+			}{
+				Int:    10,
+				Pint:   pint(11),
+				Iface:  pint(12),
+				Piface: pinterface(pint(13)),
+			},
+			regFuncs: []interface{}{
+				func(data []byte, n *int) error {
+					x, err := strconv.ParseInt(string(data), 16, 64)
+					if err != nil {
+						return err
+					}
+					*n = int(x)
+					return nil
+				},
+			},
+			expectedRecord: []string{"a", "b", "c", "d"},
+			header:         []string{"Int", "Pint", "Iface", "Piface"},
+		},
+		{
+			desc: "registered func - initialized interface ptr",
+			in:   "Iface,Piface\na,b",
+			out: &struct {
+				Iface  interface{}
+				Piface *interface{}
+			}{Iface: 10, Piface: pinterface(10)},
+			expected: &struct {
+				Iface  interface{}
+				Piface *interface{}
+			}{
+				Iface:  "a",
+				Piface: pinterface("b"),
+			},
+			regFuncs: []interface{}{
+				func(data []byte, n *int) error {
+					x, err := strconv.ParseInt(string(data), 16, 64)
+					if err != nil {
+						return err
+					}
+					*n = int(x)
+					return nil
+				},
+			},
+			expectedRecord: []string{"a", "b"},
+			header:         []string{"Iface", "Piface"},
+		},
+		{
+			desc: "registered func - interfaces",
+			in:   "Int,Pint,Iface,Piface,Scanner,PScanner\n10,20,30,40,50,60",
+			out: &struct {
+				Int      IntStruct
+				Pint     *IntStruct
+				Iface    interface{}
+				Piface   *interface{}
+				Scanner  fmt.Scanner
+				PScanner *fmt.Scanner
+			}{
+				Iface:    &IntStruct{},
+				Piface:   pinterface(&IntStruct{}),
+				Scanner:  &IntStruct{},
+				PScanner: &[]fmt.Scanner{&IntStruct{}}[0],
+			},
+			expected: &struct {
+				Int      IntStruct
+				Pint     *IntStruct
+				Iface    interface{}
+				Piface   *interface{}
+				Scanner  fmt.Scanner
+				PScanner *fmt.Scanner
+			}{
+				Int:      IntStruct{Value: 10},
+				Pint:     &IntStruct{Value: 20},
+				Iface:    &IntStruct{Value: 30},
+				Piface:   pinterface(&IntStruct{Value: 40}),
+				Scanner:  &IntStruct{Value: 50},
+				PScanner: &[]fmt.Scanner{&IntStruct{Value: 60}}[0],
+			},
+			regFuncs: []interface{}{
+				func(data []byte, scanner fmt.Scanner) error {
+					_, err := fmt.Sscan(string(data), scanner)
+					return err
+				},
+			},
+			expectedRecord: []string{"10", "20", "30", "40", "50", "60"},
+			header:         []string{"Int", "Pint", "Iface", "Piface", "Scanner", "PScanner"},
+		},
+		{
+			desc: "registered func - invalid interface",
+			in:   "Foo\n1",
+			regFuncs: []interface{}{
+				func(data []byte, scanner fmt.Scanner) error {
+					_, err := fmt.Sscan(string(data), scanner)
+					return err
+				},
+			},
+			out: &struct{ Foo fmt.Scanner }{},
+			err: &UnmarshalTypeError{Value: "1", Type: reflect.TypeOf((*fmt.Scanner)(nil)).Elem()},
+		},
+		{
+			desc: "registered func - invalid *interface",
+			in:   "Foo\n1",
+			regFuncs: []interface{}{
+				func(data []byte, scanner fmt.Scanner) error {
+					_, err := fmt.Sscan(string(data), scanner)
+					return err
+				},
+			},
+			out: &struct{ Foo *fmt.Scanner }{},
+			err: &UnmarshalTypeError{Value: "1", Type: reflect.TypeOf((*fmt.Scanner)(nil)).Elem()},
+		},
+		{
+			desc: "registered func - non ptr interface",
+			in:   "Foo\n1",
+			regFuncs: []interface{}{
+				func(data []byte, scanner fmt.Scanner) error {
+					_, err := fmt.Sscan(string(data), scanner)
+					return err
+				},
+			},
+			out:            &struct{ Foo interface{} }{Foo: (fmt.Scanner)(nil)},
+			expected:       &struct{ Foo interface{} }{Foo: "1"},
+			expectedRecord: []string{"1"},
+			header:         []string{"Foo"},
+		},
+		{
+			desc: "registered func - ptr interface",
+			in:   "Foo\n1",
+			regFuncs: []interface{}{
+				func(data []byte, scanner fmt.Scanner) error {
+					_, err := fmt.Sscan(string(data), scanner)
+					return err
+				},
+			},
+			out:            &struct{ Foo interface{} }{Foo: (*fmt.Scanner)(nil)},
+			expected:       &struct{ Foo interface{} }{Foo: "1"},
+			expectedRecord: []string{"1"},
+			header:         []string{"Foo"},
+		},
 	}
 
 	for _, f := range fixtures {
@@ -1245,6 +1569,10 @@ string,"{""key"":""value""}"
 			r, err := NewDecoder(newCSVReader(strings.NewReader(f.in)), f.inheader...)
 			if err != nil {
 				t.Fatal(err)
+			}
+
+			for _, fn := range f.regFuncs {
+				r.Register(fn)
 			}
 
 			err = r.Decode(&f.out)
@@ -1909,6 +2237,81 @@ s,1,3.14,true
 		}
 	})
 
+	t.Run("register panics", func(t *testing.T) {
+		dec, err := NewDecoder(csv.NewReader(nil), "foo")
+		if err != nil {
+			panic(err)
+		}
+
+		fixtures := []struct {
+			desc string
+			arg  interface{}
+		}{
+			{
+				desc: "not a func",
+				arg:  1,
+			},
+			{
+				desc: "nil",
+				arg:  nil,
+			},
+			{
+				desc: "T == empty interface",
+				arg:  func([]byte, interface{}) error { return nil },
+			},
+			{
+				desc: "first in not bytes",
+				arg:  func(int, int) error { return nil },
+			},
+			{
+				desc: "out not error",
+				arg:  func([]byte, *int) int { return 0 },
+			},
+			{
+				desc: "func with one in value",
+				arg:  func(int) error { return nil },
+			},
+			{
+				desc: "func with no returns",
+				arg:  func([]byte, int) {},
+			},
+		}
+
+		for _, f := range fixtures {
+			t.Run(f.desc, func(t *testing.T) {
+				var e interface{}
+				func() {
+					defer func() {
+						e = recover()
+					}()
+					dec.Register(f.arg)
+				}()
+
+				if e == nil {
+					t.Error("Register was supposed to panic but it didnt")
+				}
+				t.Log(e)
+			})
+		}
+
+		t.Run("already registered", func(t *testing.T) {
+			f := func([]byte, int) error { return nil }
+			dec.Register(f)
+
+			var e interface{}
+			func() {
+				defer func() {
+					e = recover()
+				}()
+				dec.Register(f)
+			}()
+
+			if e == nil {
+				t.Error("Register was supposed to panic but it didnt")
+			}
+			t.Log(e)
+		})
+	})
 }
 
 func BenchmarkDecode(b *testing.B) {
