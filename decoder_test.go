@@ -59,26 +59,26 @@ func (e *Enum) UnmarshalCSV(data []byte) error {
 }
 
 type ValueRecUnmarshaler struct {
-	Buf *bytes.Buffer
+	S *string
 }
 
 func (u ValueRecUnmarshaler) UnmarshalCSV(data []byte) error {
-	u.Buf.Write(data)
+	*u.S = string(data)
 	return nil
 }
 
 func (u ValueRecUnmarshaler) Scan(data []byte) error {
-	u.Buf.WriteString("scan: ")
-	u.Buf.Write(data)
+	*u.S = "scan: "
+	*u.S += string(data)
 	return nil
 }
 
 type ValueRecTextUnmarshaler struct {
-	Buf *bytes.Buffer
+	S *string
 }
 
 func (u ValueRecTextUnmarshaler) UnmarshalText(text []byte) error {
-	u.Buf.Write(text)
+	*u.S = string(text)
 	return nil
 }
 
@@ -568,18 +568,18 @@ string,"{""key"":""value""}"
 				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
 				Iface                  interface{}          `csv:"3"`
 			}{
-				ValueRecUnmarshaler{new(bytes.Buffer)},
-				&ValueRecUnmarshaler{new(bytes.Buffer)},
-				ValueRecUnmarshaler{new(bytes.Buffer)},
+				ValueRecUnmarshaler{new(string)},
+				&ValueRecUnmarshaler{new(string)},
+				ValueRecUnmarshaler{new(string)},
 			},
 			expected: &struct {
 				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
 				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
 				Iface                  interface{}          `csv:"3"`
 			}{
-				ValueRecUnmarshaler{bytes.NewBufferString("1")},
-				&ValueRecUnmarshaler{bytes.NewBufferString("2")},
-				ValueRecUnmarshaler{bytes.NewBufferString("3")},
+				ValueRecUnmarshaler{pstring("1")},
+				&ValueRecUnmarshaler{pstring("2")},
+				ValueRecUnmarshaler{pstring("3")},
 			},
 			expectedRecord: []string{"1", "2", "3"},
 			header:         []string{"1", "2", "3"},
@@ -593,10 +593,10 @@ string,"{""key"":""value""}"
 				Iface                  interface{}          `csv:"3"`
 				Iface2                 interface{}          `csv:"4"`
 			}{
-				ValueRecUnmarshaler{new(bytes.Buffer)},
-				&ValueRecUnmarshaler{new(bytes.Buffer)},
-				ValueRecUnmarshaler{new(bytes.Buffer)},
-				&ValueRecUnmarshaler{new(bytes.Buffer)},
+				ValueRecUnmarshaler{new(string)},
+				&ValueRecUnmarshaler{new(string)},
+				ValueRecUnmarshaler{new(string)},
+				&ValueRecUnmarshaler{new(string)},
 			},
 			expected: &struct {
 				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
@@ -604,10 +604,10 @@ string,"{""key"":""value""}"
 				Iface                  interface{}          `csv:"3"`
 				Iface2                 interface{}          `csv:"4"`
 			}{
-				ValueRecUnmarshaler{bytes.NewBufferString("scan: 1")},
-				&ValueRecUnmarshaler{bytes.NewBufferString("scan: 2")},
-				ValueRecUnmarshaler{bytes.NewBufferString("scan: 3")},
-				&ValueRecUnmarshaler{bytes.NewBufferString("scan: 4")},
+				ValueRecUnmarshaler{pstring("scan: 1")},
+				&ValueRecUnmarshaler{pstring("scan: 2")},
+				ValueRecUnmarshaler{pstring("scan: 3")},
+				&ValueRecUnmarshaler{pstring("scan: 4")},
 			},
 			regFuncs: []interface{}{
 				func(data []byte, v ValueRecUnmarshaler) error {
@@ -626,10 +626,10 @@ string,"{""key"":""value""}"
 				Iface                  interface{}          `csv:"3"`
 				Iface2                 interface{}          `csv:"4"`
 			}{
-				ValueRecUnmarshaler{new(bytes.Buffer)},
-				&ValueRecUnmarshaler{new(bytes.Buffer)},
-				ValueRecUnmarshaler{new(bytes.Buffer)},
-				&ValueRecUnmarshaler{new(bytes.Buffer)},
+				ValueRecUnmarshaler{new(string)},
+				&ValueRecUnmarshaler{new(string)},
+				ValueRecUnmarshaler{new(string)},
+				&ValueRecUnmarshaler{new(string)},
 			},
 			expected: &struct {
 				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
@@ -637,10 +637,10 @@ string,"{""key"":""value""}"
 				Iface                  interface{}          `csv:"3"`
 				Iface2                 interface{}          `csv:"4"`
 			}{
-				ValueRecUnmarshaler{bytes.NewBufferString("scan: 1")},
-				&ValueRecUnmarshaler{bytes.NewBufferString("scan: 2")},
-				ValueRecUnmarshaler{bytes.NewBufferString("scan: 3")},
-				&ValueRecUnmarshaler{bytes.NewBufferString("scan: 4")},
+				ValueRecUnmarshaler{pstring("scan: 1")},
+				&ValueRecUnmarshaler{pstring("scan: 2")},
+				ValueRecUnmarshaler{pstring("scan: 3")},
+				&ValueRecUnmarshaler{pstring("scan: 4")},
 			},
 			regFuncs: []interface{}{
 				func(data []byte, v interface{ Scan([]byte) error }) error {
@@ -659,10 +659,10 @@ string,"{""key"":""value""}"
 				Iface                      interface{}              `csv:"3"`
 				Iface2                     interface{}              `csv:"4"`
 			}{
-				ValueRecTextUnmarshaler{new(bytes.Buffer)},
-				&ValueRecTextUnmarshaler{new(bytes.Buffer)},
-				ValueRecTextUnmarshaler{new(bytes.Buffer)},
-				&ValueRecTextUnmarshaler{new(bytes.Buffer)},
+				ValueRecTextUnmarshaler{new(string)},
+				&ValueRecTextUnmarshaler{new(string)},
+				ValueRecTextUnmarshaler{new(string)},
+				&ValueRecTextUnmarshaler{new(string)},
 			},
 			expected: &struct {
 				ValueRecTextUnmarshaler    ValueRecTextUnmarshaler  `csv:"1"`
@@ -670,10 +670,10 @@ string,"{""key"":""value""}"
 				Iface                      interface{}              `csv:"3"`
 				Iface2                     interface{}              `csv:"4"`
 			}{
-				ValueRecTextUnmarshaler{bytes.NewBufferString("1")},
-				&ValueRecTextUnmarshaler{bytes.NewBufferString("2")},
-				ValueRecTextUnmarshaler{bytes.NewBufferString("3")},
-				&ValueRecTextUnmarshaler{bytes.NewBufferString("4")},
+				ValueRecTextUnmarshaler{pstring("1")},
+				&ValueRecTextUnmarshaler{pstring("2")},
+				ValueRecTextUnmarshaler{pstring("3")},
+				&ValueRecTextUnmarshaler{pstring("4")},
 			},
 			expectedRecord: []string{"1", "2", "3", "4"},
 			header:         []string{"1", "2", "3", "4"},
