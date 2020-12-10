@@ -31,7 +31,7 @@ Index
 	4. [But my CSV file has no header...](#examples_but_my_csv_has_no_header)
 	5. [Decoder.Map - data normalization](#examples_decoder_map)
 	6. [Different separator/delimiter](#examples_different_separator)
-	7. [Decoder and interface values](#examples_decoder_interface_values)
+	7. [Custom Types](#examples_custom_types)
 	8. [Custom time.Time format](#examples_time_format)
 	9. [Custom struct tags](#examples_struct_tags)
 	10. [Slice and Map fields](#examples_slice_and_map_field)
@@ -283,94 +283,90 @@ Some files may use different value separators, for example TSV files would use `
 	}
 ```
 
-### Decoder and interface values <a name="examples_decoder_interface_values"></a>
+### Custom Types and Overrides <a name="examples_custom_types"></a>
 
-In the case of interface struct fields data is decoded into strings. However, if Decoder finds out that
-these fields were initialized with pointer values of a specific type prior to decoding, it will try to decode data into that type.
+There are multiple ways to customize or override your type's behavior.
 
-Why only pointer values? Because these values must be both addressable and settable, otherwise Decoder
-will have to initialize these types on its own, which could result in losing some unexported information.
-
-If interface stores a non-pointer value it will be replaced with a string.
-
-This example will show how this feature could be useful:
+1. a type implements [csvutil.Marshaler](https://pkg.go.dev/github.com/jszwec/csvutil#Marshaler) and/or [csvutil.Unmarshaler](https://pkg.go.dev/github.com/jszwec/csvutil#Unmarshaler)
 ```go
-package main
+type Foo int64
 
-import (
-	"bytes"
-	"encoding/csv"
-	"fmt"
-	"io"
-	"log"
-
-	"github.com/jszwec/csvutil"
-)
-
-// Value defines one record in the csv input. In this example it is important
-// that Type field is defined before Value. Decoder reads headers and values
-// in the same order as struct fields are defined.
-type Value struct {
-	Type  string      `csv:"type"`
-	Value interface{} `csv:"value"`
+func (f Foo) MarshalCSV() ([]byte, error) {
+	return strconv.AppendInt(nil, int64(f), 16), nil
 }
 
-func main() {
-	// lets say our csv input defines variables with their types and values.
-	data := []byte(`
-type,value
-string,string_value
-int,10
-`)
-
-	dec, err := csvutil.NewDecoder(csv.NewReader(bytes.NewReader(data)))
+func (f *Foo) UnmarshalCSV(data []byte) error {
+	i, err := strconv.ParseInt(string(data), 16, 64)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	// we would like to read every variable and store their already parsed values
-	// in the interface field. We can use Decoder.Map function to initialize
-	// interface with proper values depending on the input.
-	var value Value
-	dec.Map = func(field, column string, v interface{}) string {
-		if column == "type" {
-			switch field {
-			case "int": // csv input tells us that this variable contains an int.
-				var n int
-				value.Value = &n // lets initialize interface with an initialized int pointer.
-			default:
-				return field
-			}
-		}
-		return field
-	}
-
-	for {
-		value = Value{}
-		if err := dec.Decode(&value); err == io.EOF {
-			break
-		} else if err != nil {
-			log.Fatal(err)
-		}
-
-		if value.Type == "int" {
-			// our variable type is int, Map func already initialized our interface
-			// as int pointer, so we can safely cast it and use it.
-			n, ok := value.Value.(*int)
-			if !ok {
-				log.Fatal("expected value to be *int")
-			}
-			fmt.Printf("value_type: %s; value: (%T) %d\n", value.Type, value.Value, *n)
-		} else {
-			fmt.Printf("value_type: %s; value: (%T) %v\n", value.Type, value.Value, value.Value)
-		}
-	}
-
-	// Output:
-	// value_type: string; value: (string) string_value
-	// value_type: int; value: (*int) 10
+	*f = Foo(i)
+	return nil
 }
 ```
+2. a type implements [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) and/or [encoding.TextMarshaler](https://golang.org/pkg/encoding/#TextMarshaler)
+```go
+type Foo int64
+
+func (f Foo) MarshalText() ([]byte, error) {
+	return strconv.AppendInt(nil, int64(f), 16), nil
+}
+
+func (f *Foo) UnmarshalText(data []byte) error {
+	i, err := strconv.ParseInt(string(data), 16, 64)
+	if err != nil {
+		return err
+	}
+	*f = Foo(i)
+	return nil
+}
+```
+3. a type is registered using [Encoder.Register](https://pkg.go.dev/github.com/jszwec/csvutil#Encoder.Register) and/or [Decoder.Register](https://pkg.go.dev/github.com/jszwec/csvutil#Decoder.Register)
+```go
+type Foo int64
+
+enc.Register(func(f Foo) ([]byte, error) {
+	return strconv.AppendInt(nil, int64(f), 16), nil
+})
+
+dec.Register(func(data []byte, f *Foo) error {
+	v, err := strconv.ParseInt(string(data), 16, 64)
+	if err != nil {
+		return err
+	}
+	*f = Foo(v)
+	return nil
+})
+```
+4. a type implements an interface that was registered using [Encoder.Register](https://pkg.go.dev/github.com/jszwec/csvutil#Encoder.Register) and/or [Decoder.Register](https://pkg.go.dev/github.com/jszwec/csvutil#Decoder.Register)
+```go
+type Foo int64
+
+func (f Foo) String() string {
+	return strconv.FormatInt(int64(f), 16)
+}
+
+func (f *Foo) Scan(state fmt.ScanState, verb rune) error {
+	// too long; look here: https://github.com/jszwec/csvutil/blob/master/example_decoder_register_test.go#L19
+}
+
+enc.Register(func(s fmt.Stringer) ([]byte, error) {
+	return []byte(s.String()), nil
+})
+
+dec.Register(func(data []byte, s fmt.Scanner) error {
+	_, err := fmt.Sscan(string(data), s)
+	return err
+})
+```
+
+The order of precedence for both Encoder and Decoder is:
+1. type is registered
+2. type implements an interface that was registered
+3. csvutil.{Un,M}arshaler
+4. encoding.Text{Un,M}arshaler
+
+For more examples look [here](https://pkg.go.dev/github.com/jszwec/csvutil?readme=expanded#pkg-examples)
 
 ### Custom time.Time format <a name="examples_time_format"></a>
 
