@@ -1,6 +1,7 @@
 package csvutil
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -129,4 +130,22 @@ func (e *MarshalerError) Error() string {
 
 func errPtrUnexportedStruct(typ reflect.Type) error {
 	return fmt.Errorf("csvutil: cannot decode into a pointer to unexported struct: %s", typ)
+}
+
+// MissingColumnsError is returned by Decoder only when DisallowMissingColumns
+// option was set to true. It contains a list of all missing columns.
+type MissingColumnsError struct {
+	Columns []string
+}
+
+func (e *MissingColumnsError) Error() string {
+	var b bytes.Buffer
+	b.WriteString("csvutil: missing columns: ")
+	for i, c := range e.Columns {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "%q", c)
+	}
+	return b.String()
 }

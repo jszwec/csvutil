@@ -18,6 +18,12 @@ type Decoder struct {
 	// options (Default: 'csv').
 	Tag string
 
+	// If true, Decoder will return a MissingColumnsError if it discovers
+	// that any of the columns are missing. This means that a CSV input
+	// will be required to contain all columns that were defined in the
+	// provided struct.
+	DisallowMissingColumns bool
+
 	// If not nil, Map is a function that is called for each field in the csv
 	// record before decoding the data. It allows mapping certain string values
 	// for specific columns or types to a known format. Decoder calls Map with
@@ -393,13 +399,18 @@ func (d *Decoder) fields(k typeKey) ([]decField, error) {
 		return d.cache, nil
 	}
 
-	fields := cachedFields(k)
-	decFields := make([]decField, 0, len(fields))
-	used := make([]bool, len(d.header))
-
+	var (
+		fields      = cachedFields(k)
+		decFields   = make([]decField, 0, len(fields))
+		used        = make([]bool, len(d.header))
+		missingCols []string
+	)
 	for _, f := range fields {
 		i, ok := d.hmap[f.name]
 		if !ok {
+			if d.DisallowMissingColumns {
+				missingCols = append(missingCols, f.name)
+			}
 			continue
 		}
 
@@ -425,6 +436,12 @@ func (d *Decoder) fields(k typeKey) ([]decField, error) {
 
 		decFields = append(decFields, df)
 		used[i] = true
+	}
+
+	if len(missingCols) > 0 {
+		return nil, &MissingColumnsError{
+			Columns: missingCols,
+		}
 	}
 
 	d.unused = d.unused[:0]

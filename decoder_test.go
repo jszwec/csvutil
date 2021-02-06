@@ -1628,6 +1628,99 @@ string,"{""key"":""value""}"
 		}
 	})
 
+	t.Run("decode with disallow missing columns", func(t *testing.T) {
+		type Type struct {
+			String string
+			Int    int
+			Float  float64
+		}
+
+		t.Run("all present", func(t *testing.T) {
+			dec, err := NewDecoder(NewReader(
+				[]string{"String", "Int", "Float"},
+				[]string{"lol", "1", "2.0"},
+			))
+			if err != nil {
+				t.Fatal(err)
+			}
+			dec.DisallowMissingColumns = true
+
+			var tt Type
+			if err := dec.Decode(&tt); err != nil {
+				t.Fatalf("expected err to be nil; got %v", err)
+			}
+
+			if expected := (Type{"lol", 1, 2}); !reflect.DeepEqual(tt, expected) {
+				t.Errorf("want=%v; got %v", expected, tt)
+			}
+		})
+
+		fixtures := []struct {
+			desc        string
+			recs        [][]string
+			missingCols []string
+			msg         string
+		}{
+			{
+				desc: "one missing",
+				recs: [][]string{
+					{"String", "Int"},
+					{"lol", "1"},
+				},
+				missingCols: []string{"Float"},
+				msg:         `csvutil: missing columns: "Float"`,
+			},
+			{
+				desc: "two missing",
+				recs: [][]string{
+					{"String"},
+					{"lol"},
+				},
+				missingCols: []string{"Int", "Float"},
+				msg:         `csvutil: missing columns: "Int", "Float"`,
+			},
+			{
+				desc: "all missing",
+				recs: [][]string{
+					{"w00t"},
+					{"lol"},
+				},
+				missingCols: []string{"String", "Int", "Float"},
+				msg:         `csvutil: missing columns: "String", "Int", "Float"`,
+			},
+		}
+
+		for _, f := range fixtures {
+			t.Run(f.desc, func(t *testing.T) {
+				dec, err := NewDecoder(NewReader(f.recs...))
+				if err != nil {
+					t.Fatal(err)
+				}
+				dec.DisallowMissingColumns = true
+
+				var tt Type
+				err = dec.Decode(&tt)
+
+				if err == nil {
+					t.Fatal("expected err != nil")
+				}
+
+				mcerr, ok := err.(*MissingColumnsError)
+				if !ok {
+					t.Fatalf("expected err to be of *MissingColumnErr; got %[1]T (%[1]v)", err)
+				}
+
+				if !reflect.DeepEqual(mcerr.Columns, f.missingCols) {
+					t.Errorf("expected missing columns to be %v; got %v", f.missingCols, mcerr.Columns)
+				}
+
+				if err.Error() != f.msg {
+					t.Errorf("expected err message to be %q; got %q", f.msg, err.Error())
+				}
+			})
+		}
+	})
+
 	t.Run("invalid unmarshal tests", func(t *testing.T) {
 		var fixtures = []struct {
 			v        interface{}
