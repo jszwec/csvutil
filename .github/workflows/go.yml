@@ -38,6 +38,9 @@ jobs:
         go-version: [1.7, 1.8, 1.9, "1.10"]
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        path: go/src/github.com/jszwec/csvutil
 
     - name: Set up Go
       uses: actions/setup-go@v2
@@ -46,4 +49,7 @@ jobs:
 
     - name: Test
       run: go test -race -v ./...
+      env:
+        GOPATH: /home/runner/work/csvutil/csvutil/go
+      working-directory: go/src/github.com/jszwec/csvutil
     
