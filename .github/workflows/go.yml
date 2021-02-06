@@ -1,0 +1,49 @@
+name: Go
+
+on:
+  push:
+    branches: [ actions ]
+  pull_request:
+    branches: [ actions ]
+
+jobs:
+
+  test:
+    strategy:
+      matrix:
+        go-version: [1.14, 1.15]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15
+
+    - name: Test
+      run: go test -race -v ./... -coverprofile=coverage.txt -covermode=atomic
+    
+    - name: Codecov
+      uses: codecov/codecov-action@v1.2.1
+      with:
+        files: coverage.txt
+
+  backward-compatibility-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.7, 1.8, 1.9, 1.10]
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Test
+      run: go test -race -v ./...
+    
