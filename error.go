@@ -128,6 +128,11 @@ func (e *MarshalerError) Error() string {
 	return "csvutil: error calling " + e.MarshalerType + " for type " + e.Type.String() + ": " + e.Err.Error()
 }
 
+// Unwrap implements Unwrap interface for errors package in Go1.13+.
+func (e *MarshalerError) Unwrap() error {
+	return e.Err
+}
+
 func errPtrUnexportedStruct(typ reflect.Type) error {
 	return fmt.Errorf("csvutil: cannot decode into a pointer to unexported struct: %s", typ)
 }
