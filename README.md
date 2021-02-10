@@ -5,9 +5,9 @@ csvutil [![PkgGoDev](https://pkg.go.dev/badge/github.com/jszwec/csvutil@v1.4.0?t
   <img style="float: right;" src="https://user-images.githubusercontent.com/3941256/33054906-52b4bc08-ce4a-11e7-9651-b70c5a47c921.png"/ width=200>
 </p>
 
-Package csvutil provides fast and idiomatic mapping between CSV and Go (golang) values.
+Package csvutil provides fast, idiomatic, and dependency free mapping between CSV and Go (golang) values.
 
-This package does not provide a CSV parser itself, it is based on the [Reader](https://godoc.org/github.com/jszwec/csvutil#Reader) and [Writer](https://godoc.org/github.com/jszwec/csvutil#Writer)
+This package is not a CSV parser, it is based on the [Reader](https://godoc.org/github.com/jszwec/csvutil#Reader) and [Writer](https://godoc.org/github.com/jszwec/csvutil#Writer)
 interfaces which are implemented by eg. std Go (golang) [csv package](https://golang.org/pkg/encoding/csv). This gives a possibility
 of choosing any other CSV writer or reader which may be more performant.
 
