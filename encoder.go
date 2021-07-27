@@ -18,20 +18,23 @@ type encCache struct {
 	record []string
 }
 
-func newEncCache(k typeKey, funcMap map[reflect.Type]reflect.Value, funcs []reflect.Value) (_ *encCache, err error) {
+func newEncCache(k typeKey, funcMap map[reflect.Type]reflect.Value, funcs []reflect.Value, fieldFilter func(string) bool) (_ *encCache, err error) {
 	fields := cachedFields(k)
-	encFields := make([]encField, len(fields))
+	encFields := make([]encField, 0, len(fields))
 
-	for i, f := range fields {
+	for _, f := range fields {
+		if fieldFilter != nil && !fieldFilter(f.name) {
+			continue
+		}
 		fn, err := encodeFn(f.baseType, true, funcMap, funcs)
 		if err != nil {
 			return nil, err
 		}
 
-		encFields[i] = encField{
+		encFields = append(encFields, encField{
 			field:      f,
 			encodeFunc: fn,
-		}
+		})
 	}
 	return &encCache{
 		fields: encFields,
@@ -51,12 +54,17 @@ type Encoder struct {
 	// to Encode automatically (Default: true).
 	AutoHeader bool
 
-	w          Writer
-	c          *encCache
-	noHeader   bool
-	typeKey    typeKey
-	funcMap    map[reflect.Type]reflect.Value
-	ifaceFuncs []reflect.Value
+	// FieldFilter allows skipping fields at runtime (similar to defining csv tag "-" at compile time)
+	// the field name is the expected CSV field name (if it was renamed by csv tag, then the renamed value is passed)
+	// return true to keep the field, false to ignore (skip) it
+	FieldFilter func(csvFieldName string) (keepField bool)
+
+	w           Writer
+	c           *encCache
+	noHeader    bool
+	typeKey     typeKey
+	funcMap     map[reflect.Type]reflect.Value
+	ifaceFuncs  []reflect.Value
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -310,7 +318,7 @@ func (e *Encoder) tag() string {
 
 func (e *Encoder) cache(typ reflect.Type) ([]encField, []byte, []int, []string, error) {
 	if k := (typeKey{e.tag(), typ}); k != e.typeKey {
-		c, err := newEncCache(k, e.funcMap, e.ifaceFuncs)
+		c, err := newEncCache(k, e.funcMap, e.ifaceFuncs, e.FieldFilter)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}

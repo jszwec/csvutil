@@ -138,6 +138,14 @@ type TypeM struct {
 	*TextMarshaler `csv:"text"`
 }
 
+type TypeN struct {
+	Embedded1
+	IgnoreMe1 string `csv:"ignoreMe"`
+	IgnoreMe2 string
+	String string `csv:"s"`
+	Int int `csv:"-"`
+}
+
 func TestEncoder(t *testing.T) {
 	fixtures := []struct {
 		desc    string
@@ -1799,6 +1807,39 @@ func TestEncoder(t *testing.T) {
 					t.Errorf("want out=%s; got %s", expected, buf.String())
 				}
 			})
+		}
+	})
+
+	t.Run("Field filter", func(t *testing.T) {
+		var buf bytes.Buffer
+		w := csv.NewWriter(&buf)
+		enc := NewEncoder(w)
+		enc.FieldFilter = func(fieldName string) bool {
+			for _, s := range []string{"ignoreMe", "IgnoreMe2", "string"} {
+				if fieldName == s {
+					return false
+				}
+			}
+			return true
+		}
+
+		if err := enc.Encode(&TypeN{
+			Embedded1: Embedded1{
+				String: "foo", // ignored, csv field name "string"
+				Float:  1.1,
+			},
+			IgnoreMe1: "not me", // ignored, csv field name = "ignoreMe"
+			IgnoreMe2: "me neither", // ignored, csv field name = "IgnoreMe2"
+			String:    "bar",
+			Int:       5,
+		}); err != nil {
+			t.Fatalf("want err=nil; got %v", err)
+		}
+		w.Flush()
+
+		expected := encodeCSV(t, [][]string {{"float","s"}, {"1.1","bar"}})
+		if buf.String() != expected {
+			t.Errorf("want %s; got %s", expected, buf.String())
 		}
 	})
 
