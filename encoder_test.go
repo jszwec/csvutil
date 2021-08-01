@@ -2041,6 +2041,147 @@ func TestEncoder(t *testing.T) {
 		}
 	})
 
+	t.Run("with header", func(t *testing.T) {
+		t.Run("all present and sorted", func(t *testing.T) {
+			fixtures := []struct {
+				desc       string
+				autoHeader bool
+				out        [][]string
+			}{
+				{
+					desc:       "with autoheader",
+					autoHeader: true,
+					out: [][]string{
+						{"C", "B", "D"},
+						{"c", "b", "d"},
+					},
+				},
+				{
+					desc:       "without autoheader",
+					autoHeader: false,
+					out: [][]string{
+						{"c", "b", "d"},
+					},
+				},
+			}
+
+			for _, f := range fixtures {
+				t.Run(f.desc, func(t *testing.T) {
+					type Embedded struct {
+						D string
+					}
+					type Foo struct {
+						A string
+						Embedded
+						B string
+						C string
+					}
+
+					var buf bytes.Buffer
+					w := csv.NewWriter(&buf)
+					enc := NewEncoder(w)
+					enc.SetHeader([]string{"C", "B", "D"})
+					enc.AutoHeader = f.autoHeader
+					enc.Encode(Foo{
+						A: "a",
+						Embedded: Embedded{
+							D: "d",
+						},
+						B: "b",
+						C: "c",
+					})
+
+					w.Flush()
+
+					expected := encodeCSV(t, f.out)
+					if expected != buf.String() {
+						t.Errorf("want=%s; got %s", expected, buf.String())
+					}
+				})
+			}
+		})
+
+		t.Run("missing fields", func(t *testing.T) {
+			fixtures := []struct {
+				desc       string
+				autoHeader bool
+				out        [][]string
+			}{
+				{
+					desc:       "with autoheader",
+					autoHeader: true,
+					out: [][]string{
+						{"C", "X", "A", "Z"},
+						{"c", "", "a", ""},
+					},
+				},
+				{
+					desc:       "without autoheader",
+					autoHeader: false,
+					out: [][]string{
+						{"c", "", "a", ""},
+					},
+				},
+			}
+
+			for _, f := range fixtures {
+				t.Run(f.desc, func(t *testing.T) {
+					type Foo struct {
+						A string
+						B string
+						C string
+					}
+
+					var buf bytes.Buffer
+					w := csv.NewWriter(&buf)
+					enc := NewEncoder(w)
+					enc.SetHeader([]string{"C", "X", "A", "Z"})
+					enc.AutoHeader = f.autoHeader
+					enc.Encode(Foo{
+						A: "a",
+						B: "b",
+						C: "c",
+					})
+
+					w.Flush()
+
+					expected := encodeCSV(t, f.out)
+					if expected != buf.String() {
+						t.Errorf("want=%q; got %q", expected, buf.String())
+					}
+				})
+			}
+		})
+
+		t.Run("duplicates", func(t *testing.T) {
+			type Foo struct {
+				A string
+				B string
+				C string
+			}
+
+			var buf bytes.Buffer
+			w := csv.NewWriter(&buf)
+			enc := NewEncoder(w)
+			enc.SetHeader([]string{"C", "X", "C", "A", "X", "Z", "A"})
+			enc.Encode(Foo{
+				A: "a",
+				B: "b",
+				C: "c",
+			})
+
+			w.Flush()
+
+			expected := encodeCSV(t, [][]string{
+				{"C", "X", "Z", "A"},
+				{"c", "", "", "a"},
+			})
+			if expected != buf.String() {
+				t.Errorf("want=%q; got %q", expected, buf.String())
+			}
+		})
+	})
+
 	t.Run("register panics", func(t *testing.T) {
 		var buf bytes.Buffer
 		r := csv.NewWriter(&buf)

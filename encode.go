@@ -19,6 +19,10 @@ var (
 
 type encodeFunc func(buf []byte, v reflect.Value, omitempty bool) ([]byte, error)
 
+func nopEncode(buf []byte, _ reflect.Value, _ bool) ([]byte, error) {
+	return buf, nil
+}
+
 func encodeFuncValue(fn reflect.Value) encodeFunc {
 	return func(buf []byte, v reflect.Value, omitempty bool) ([]byte, error) {
 		out := fn.Call([]reflect.Value{v})

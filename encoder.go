@@ -2,6 +2,7 @@ package csvutil
 
 import (
 	"reflect"
+	"sort"
 )
 
 const defaultBufSize = 4096
@@ -18,27 +19,73 @@ type encCache struct {
 	record []string
 }
 
-func newEncCache(k typeKey, funcMap map[reflect.Type]reflect.Value, funcs []reflect.Value) (_ *encCache, err error) {
+func newEncCache(k typeKey, funcMap map[reflect.Type]reflect.Value, funcs []reflect.Value, header []string) (_ *encCache, err error) {
 	fields := cachedFields(k)
-	encFields := make([]encField, len(fields))
+	encFields := make([]encField, 0, len(fields))
 
-	for i, f := range fields {
+	// if header is not empty, we are going to track columns in a set and we will
+	// track which columns are covered by type fields.
+	set := make(map[string]bool, len(header))
+	for _, s := range header {
+		set[s] = false
+	}
+
+	for _, f := range fields {
+		if _, ok := set[f.name]; len(header) > 0 && !ok {
+			continue
+		}
+		set[f.name] = true
+
 		fn, err := encodeFn(f.baseType, true, funcMap, funcs)
 		if err != nil {
 			return nil, err
 		}
 
-		encFields[i] = encField{
+		encFields = append(encFields, encField{
 			field:      f,
 			encodeFunc: fn,
-		}
+		})
 	}
+
+	if len(header) > 0 {
+		// look for columns that were defined in a header but are not present
+		// in the provided data type. In case we find any, we will set it to
+		// a no-op encoder that always produces an empty column.
+		for k, b := range set {
+			if b {
+				continue
+			}
+			encFields = append(encFields, encField{
+				field: field{
+					name: k,
+				},
+				encodeFunc: nopEncode,
+			})
+		}
+
+		sortEncFields(header, encFields)
+	}
+
 	return &encCache{
 		fields: encFields,
 		buf:    make([]byte, 0, defaultBufSize),
 		index:  make([]int, len(encFields)),
 		record: make([]string, len(encFields)),
 	}, nil
+}
+
+// sortEncFields sorts the provided fields according to the given header.
+// at this stage header expects to contain matching fields, so both slices
+// are expected to be of the same length.
+func sortEncFields(header []string, fields []encField) {
+	set := make(map[string]int, len(header))
+	for i, s := range header {
+		set[s] = i
+	}
+
+	sort.Slice(fields, func(i, j int) bool {
+		return set[fields[i].name] < set[fields[j].name]
+	})
 }
 
 // Encoder writes structs CSV representations to the output stream.
@@ -53,6 +100,7 @@ type Encoder struct {
 
 	w          Writer
 	c          *encCache
+	header     []string
 	noHeader   bool
 	typeKey    typeKey
 	funcMap    map[reflect.Type]reflect.Value
@@ -117,6 +165,21 @@ func (e *Encoder) Register(f interface{}) {
 	}
 }
 
+// SetHeader overrides the provided data type's default header. Fields are
+// encoded in the order of the provided header. If a column specified in the
+// header doesn't exist in the provided type, it will be encoded as an empty
+// column. Fields that are not part of the provided header are ignored.
+// Encoder can't guarantee the right order if the provided header contains
+// duplicate column names.
+//
+// SetHeader must be called before EncodeHeader and/or Encode in order to take
+// effect.
+func (enc *Encoder) SetHeader(header []string) {
+	cp := make([]string, len(header))
+	copy(cp, header)
+	enc.header = cp
+}
+
 // Encode writes the CSV encoding of v to the output stream. The provided
 // argument v must be a struct, struct slice or struct array.
 //
@@ -125,6 +188,13 @@ func (e *Encoder) Register(f interface{}) {
 // First call to Encode will write a header unless EncodeHeader was called first
 // or AutoHeader is false. Header names can be customized by using tags
 // ('csv' by default), otherwise original Field names are used.
+//
+// If header was provided through SetHeader then it overrides the provided data
+// type's default header. Fields are encoded in the order of the provided header.
+// If a column specified in the header doesn't exist in the provided type, it will
+// be encoded as an empty column. Fields that are not part of the provided header
+// are ignored. Encoder can't guarantee the right order if the provided header
+// contains duplicate column names.
 //
 // Header and fields are written in the same order as struct fields are defined.
 // Embedded struct's fields are treated as if they were part of the outer struct.
@@ -310,7 +380,7 @@ func (e *Encoder) tag() string {
 
 func (e *Encoder) cache(typ reflect.Type) ([]encField, []byte, []int, []string, error) {
 	if k := (typeKey{e.tag(), typ}); k != e.typeKey {
-		c, err := newEncCache(k, e.funcMap, e.ifaceFuncs)
+		c, err := newEncCache(k, e.funcMap, e.ifaceFuncs, e.header)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
