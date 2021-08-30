@@ -154,3 +154,26 @@ func (e *MissingColumnsError) Error() string {
 	}
 	return b.String()
 }
+
+// decodeError provides context to decoding errors if available.
+//
+// The caller should use errors.As in order to fetch the underlying error if
+// needed.
+type decodeError struct {
+	Field  string
+	Line   int
+	Column int
+	Err    error
+}
+
+func (e *decodeError) Error() string {
+	if e.Line > 0 && e.Column > 0 {
+		// Lines and Columns are 1-indexed so this check is fine.
+		return fmt.Sprintf("%s: field %q line %d column %d", e.Err, e.Field, e.Line, e.Column)
+	}
+	return fmt.Sprintf("%s: field %q", e.Err, e.Field)
+}
+
+func (e *decodeError) Unwrap() error {
+	return e.Err
+}

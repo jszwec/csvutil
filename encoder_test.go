@@ -1412,7 +1412,7 @@ func TestEncoder(t *testing.T) {
 			for _, v := range f.in {
 				err := enc.Encode(v)
 				if f.err != nil {
-					if !reflect.DeepEqual(f.err, err) {
+					if !checkErr(f.err, err) {
 						t.Errorf("want err=%v; got %v", f.err, err)
 					}
 					return
@@ -1787,7 +1787,7 @@ func TestEncoder(t *testing.T) {
 				err := enc.EncodeHeader(f.in)
 				w.Flush()
 
-				if !reflect.DeepEqual(err, f.err) {
+				if !checkErr(f.err, err) {
 					t.Errorf("want err=%v; got %v", f.err, err)
 				}
 
@@ -2014,7 +2014,7 @@ func TestEncoder(t *testing.T) {
 				err := NewEncoder(w).Encode(f.in)
 
 				if f.err != nil {
-					if !reflect.DeepEqual(f.err, err) {
+					if !checkErr(f.err, err) {
 						t.Errorf("want err=%v; got %v", f.err, err)
 					}
 					return

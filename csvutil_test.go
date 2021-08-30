@@ -165,7 +165,7 @@ func TestUnmarshal(t *testing.T) {
 		for _, f := range fixtures {
 			t.Run(f.desc, func(t *testing.T) {
 				var a []A
-				if err := Unmarshal(f.data, &a); !reflect.DeepEqual(err, f.err) {
+				if err := Unmarshal(f.data, &a); !checkErr(f.err, err) {
 					t.Errorf("want err=%v; got %v", f.err, err)
 				}
 			})
@@ -432,7 +432,7 @@ func TestMarshal(t *testing.T) {
 		t.Run(f.desc, func(t *testing.T) {
 			b, err := Marshal(f.v)
 			if f.err != nil {
-				if !reflect.DeepEqual(f.err, err) {
+				if !checkErr(f.err, err) {
 					t.Errorf("want err=%v; got %v", f.err, err)
 				}
 				return
@@ -536,18 +536,6 @@ func TestMarshal(t *testing.T) {
 			})
 		}
 	})
-
-	t.Run("unmarshal type error message", func(t *testing.T) {
-		expected := `csvutil: cannot unmarshal "field" into Go value of type int`
-		err := Unmarshal([]byte("X\nfield"), &[]A{})
-		if err == nil {
-			t.Fatal("want err not to be nil")
-		}
-		if err.Error() != expected {
-			t.Errorf("want=%s; got %s", expected, err.Error())
-		}
-	})
-
 }
 
 type TypeJ struct {
@@ -819,7 +807,7 @@ func TestHeader(t *testing.T) {
 		t.Run(f.desc, func(t *testing.T) {
 			h, err := Header(f.v, f.tag)
 
-			if !reflect.DeepEqual(err, f.err) {
+			if !checkErr(f.err, err) {
 				t.Errorf("want err=%v; got %v", f.err, err)
 			}
 
@@ -883,4 +871,60 @@ func TestParity(t *testing.T) {
 	if !reflect.DeepEqual(in, out) {
 		t.Errorf("want out=%v; got %v", in, out)
 	}
+}
+
+func checkErr(expected, err error) bool {
+	if expected == err {
+		return true
+	}
+
+	eVal := reflect.New(reflect.TypeOf(expected))
+	if !asError(err, eVal.Interface()) {
+		return false
+	}
+	return reflect.DeepEqual(eVal.Elem().Interface(), expected)
+}
+
+// asError is a copy of errors.As to support older Go versions.
+//
+// This copy exists because we want to avoid dependencies like:
+// "golang.org/x/xerrors"
+func asError(err error, target interface{}) bool {
+	if target == nil {
+		panic("errors: target cannot be nil")
+	}
+	val := reflect.ValueOf(target)
+	typ := val.Type()
+	if typ.Kind() != reflect.Ptr || val.IsNil() {
+		panic("errors: target must be a non-nil pointer")
+	}
+	targetType := typ.Elem()
+	if targetType.Kind() != reflect.Interface && !targetType.Implements(errorType) {
+		panic("errors: *target must be interface or implement error")
+	}
+	for err != nil {
+		if reflect.TypeOf(err).AssignableTo(targetType) {
+			val.Elem().Set(reflect.ValueOf(err))
+			return true
+		}
+		if x, ok := err.(interface{ As(interface{}) bool }); ok && x.As(target) {
+			return true
+		}
+		err = unwrap(err)
+	}
+	return false
+}
+
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
+// unwrap is a copy of errors.Unwrap for older Go versions and to avoid
+// dependencies.
+func unwrap(err error) error {
+	u, ok := err.(interface {
+		Unwrap() error
+	})
+	if !ok {
+		return nil
+	}
+	return u.Unwrap()
 }

@@ -388,10 +388,40 @@ fieldLoop:
 		}
 
 		if err := f.decodeFunc(s, fv); err != nil {
-			return err
+			return wrapDecodeError(d.r, d.header[f.columnIndex], f.columnIndex, err)
 		}
 	}
 	return nil
+}
+
+// wrapDecodeError provides the given error with more context such as:
+// 	- column name (field)
+// 	- line number
+// 	- column within record
+//
+// Line and Column info is available only if the used Reader supports 'FieldPos'
+// that is available e.g. in csv.Reader (since Go1.17).
+//
+// The caller should use errors.As in order to fetch the original error.
+func wrapDecodeError(r Reader, field string, fieldIndex int, err error) error {
+	fp, ok := r.(interface {
+		FieldPos(fieldIndex int) (line, column int)
+	})
+	if !ok {
+		return &decodeError{
+			Field: field,
+			Err:   err,
+		}
+	}
+
+	l, c := fp.FieldPos(fieldIndex)
+
+	return &decodeError{
+		Field:  field,
+		Line:   l,
+		Column: c,
+		Err:    err,
+	}
 }
 
 func (d *Decoder) fields(k typeKey) ([]decField, error) {

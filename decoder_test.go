@@ -1015,7 +1015,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "slice of structs - pre-allocated",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[]TypeI{0: TypeI{Int: 200}, 1024: TypeI{Int: 100}},
+			out:  &[]TypeI{0: {Int: 200}, 1024: {Int: 100}},
 			expected: &[]TypeI{
 				{String: "first", Int: 1},
 				{String: "second", Int: 2},
@@ -1577,7 +1577,7 @@ string,"{""key"":""value""}"
 
 			err = r.Decode(&f.out)
 			if f.err != nil {
-				if !reflect.DeepEqual(f.err, err) {
+				if !checkErr(f.err, err) {
 					t.Errorf("want err=%v; got %v", f.err, err)
 				}
 				return
