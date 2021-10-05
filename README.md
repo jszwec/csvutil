@@ -19,7 +19,7 @@ Installation
 Requirements
 -------------
 
-* Go1.7+
+* Go1.8+
 
 Index
 ------
