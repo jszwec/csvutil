@@ -1,6 +1,7 @@
 package csvutil
 
 import (
+	"errors"
 	"io"
 	"reflect"
 )
@@ -200,6 +201,27 @@ func (d *Decoder) Header() []string {
 	header := make([]string, len(d.header))
 	copy(header, d.header)
 	return header
+}
+
+// NormalizeHeader applies f to every column in the header. It returns error
+// if calling f results in conflicting header columns.
+//
+// NormalizeHeader must be called before Decode.
+func (d *Decoder) NormalizeHeader(f func(string) string) error {
+	set := make(map[string]int, len(d.header))
+	for i, s := range d.header {
+		set[f(s)] = i
+	}
+
+	if len(set) != len(d.header) {
+		return errors.New("csvutil: normalize header results in conflicting columns")
+	}
+
+	for s, i := range set {
+		d.header[i] = s
+	}
+	d.hmap = set
+	return nil
 }
 
 // Unused returns a list of column indexes that were not used during decoding

@@ -2405,6 +2405,45 @@ s,1,3.14,true
 			t.Log(e)
 		})
 	})
+
+	t.Run("normalize header", func(t *testing.T) {
+		csvr := csv.NewReader(strings.NewReader("STRING,INT\nfirst,1"))
+		dec, err := NewDecoder(csvr)
+		if err != nil {
+			t.Fatalf("want err == nil; got %v", err)
+		}
+
+		if err := dec.NormalizeHeader(strings.ToLower); err != nil {
+			t.Fatalf("want err=nil; got %v", err)
+		}
+
+		var data struct {
+			String string `csv:"string"`
+			Int    int    `csv:"int"`
+		}
+		if err := dec.Decode(&data); err != nil {
+			t.Fatalf("want err=nil; got %v", err)
+		}
+
+		if data.String != "first" {
+			t.Errorf("want String=first; got %s", data.String)
+		}
+		if data.Int != 1 {
+			t.Errorf("want Int=1; got %d", data.Int)
+		}
+	})
+
+	t.Run("normalize header - duplicate error", func(t *testing.T) {
+		csvr := csv.NewReader(strings.NewReader("STRING,string\nfirst,1"))
+		dec, err := NewDecoder(csvr)
+		if err != nil {
+			t.Fatalf("want err == nil; got %v", err)
+		}
+
+		if err := dec.NormalizeHeader(strings.ToLower); err == nil {
+			t.Fatal("want err not to be nil")
+		}
+	})
 }
 
 func BenchmarkDecode(b *testing.B) {
