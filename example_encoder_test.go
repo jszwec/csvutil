@@ -116,9 +116,14 @@ func ExampleEncoder_EncodeHeader() {
 }
 
 func ExampleEncoder_Encode_inline() {
+	type Owner struct {
+		Name string `csv:"name"`
+	}
+
 	type Address struct {
 		Street string `csv:"street"`
 		City   string `csv:"city"`
+		Owner  Owner  `csv:"owner_,inline"`
 	}
 
 	type User struct {
@@ -132,9 +137,9 @@ func ExampleEncoder_Encode_inline() {
 	users := []User{
 		{
 			Name:        "John",
-			Address:     Address{"Washington", "Boston"},
-			HomeAddress: Address{"Boylston", "Boston"},
-			WorkAddress: Address{"River St", "Cambridge"},
+			Address:     Address{"Washington", "Boston", Owner{"Steve"}},
+			HomeAddress: Address{"Boylston", "Boston", Owner{"Steve"}},
+			WorkAddress: Address{"River St", "Cambridge", Owner{"Steve"}},
 			Age:         26,
 		},
 	}
@@ -147,8 +152,8 @@ func ExampleEncoder_Encode_inline() {
 	fmt.Printf("%s\n", b)
 
 	// Output:
-	// name,street,city,home_address_street,home_address_city,work_address_street,work_address_city,age
-	// John,Washington,Boston,Boylston,Boston,River St,Cambridge,26
+	// name,street,city,owner_name,home_address_street,home_address_city,home_address_owner_name,work_address_street,work_address_city,work_address_owner_name,age
+	// John,Washington,Boston,Steve,Boylston,Boston,Steve,River St,Cambridge,Steve,26
 }
 
 func ExampleEncoder_Register() {
