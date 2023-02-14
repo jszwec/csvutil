@@ -221,7 +221,7 @@ type TypeF struct {
 	UInt     uint     `csv:"uint" custom:"uint"`
 	Puint    *uint    `csv:"puint" custom:"puint"`
 	Uint8    uint8    `csv:"uint8" custom:"uint8"`
-	Puint8   *uint8   `csv:"ptr[uint8](" custom:"ptr[uint8]("`
+	Puint8   *uint8   `csv:"puint8" custom:"puint8"`
 	Uint16   uint16   `csv:"uint16" custom:"uint16"`
 	Puint16  *uint16  `csv:"puint16" custom:"puint16"`
 	Uint32   uint32   `csv:"uint32" custom:"uint32"`
@@ -440,7 +440,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "basic types",
 			in: "int,pint,int8,pint8,int16,pint16,int32,pint32,int64,pint64,uint," +
-				"puint,uint8,ptr[uint8](,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
+				"puint,uint8,puint8,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,true,true,true,1," +
 				EncodedBinary + "," + EncodedBinaryLarge,
@@ -495,7 +495,7 @@ string,"{""key"":""value""}"
 				"uint",
 				"puint",
 				"uint8",
-				"ptr[uint8](",
+				"puint8",
 				"uint16",
 				"puint16",
 				"uint32",
@@ -1338,7 +1338,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "blank values on pointers decode to nil",
 			in: "int,pint,int8,pint8,int16,pint16,int32,pint32,int64,pint64,uint," +
-				"puint,uint8,ptr[uint8](,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
+				"puint,uint8,puint8,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,,3,,5,,7,,9,,11,,13,,15,,17,,19,,21,,23,,25,,true,,true,," +
 				EncodedBinary + "," + "",
@@ -1397,7 +1397,7 @@ string,"{""key"":""value""}"
 				"uint",
 				"puint",
 				"uint8",
-				"ptr[uint8](",
+				"puint8",
 				"uint16",
 				"puint16",
 				"uint32",
@@ -1904,7 +1904,7 @@ s,1,3.14,true
 	t.Run("map", func(t *testing.T) {
 		t.Run("receives non-pointer and non-interface zero values", func(t *testing.T) {
 			data := []byte("int,pint,int8,pint8,int16,pint16,int32,pint32,int64,pint64,uint," +
-				"puint,uint8,ptr[uint8](,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
+				"puint,uint8,puint8,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,true,true,true,1," +
 				EncodedBinary + "," + EncodedBinaryLarge)
