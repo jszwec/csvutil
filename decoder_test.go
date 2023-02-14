@@ -221,7 +221,7 @@ type TypeF struct {
 	UInt     uint     `csv:"uint" custom:"uint"`
 	Puint    *uint    `csv:"puint" custom:"puint"`
 	Uint8    uint8    `csv:"uint8" custom:"uint8"`
-	Puint8   *uint8   `csv:"puint8" custom:"puint8"`
+	Puint8   *uint8   `csv:"ptr[uint8](" custom:"ptr[uint8]("`
 	Uint16   uint16   `csv:"uint16" custom:"uint16"`
 	Puint16  *uint16  `csv:"puint16" custom:"puint16"`
 	Uint32   uint32   `csv:"uint32" custom:"uint32"`
@@ -358,25 +358,9 @@ var String = "string"
 var PString = &String
 var TypeISlice []TypeI
 
-func pint(n int) *int             { return &n }
-func pint8(n int8) *int8          { return &n }
-func pint16(n int16) *int16       { return &n }
-func pint32(n int32) *int32       { return &n }
-func pint64(n int64) *int64       { return &n }
-func puint(n uint) *uint          { return &n }
-func puint8(n uint8) *uint8       { return &n }
-func puint16(n uint16) *uint16    { return &n }
-func puint32(n uint32) *uint32    { return &n }
-func puint64(n uint64) *uint64    { return &n }
-func pfloat32(f float32) *float32 { return &f }
-func pfloat64(f float64) *float64 { return &f }
-func pstring(s string) *string    { return &s }
-func pbool(b bool) *bool          { return &b }
-func pinterface(v any) *any       { return &v }
-
-func ppint(n int) **int       { p := pint(n); return &p }
-func pppint(n int) ***int     { p := ppint(n); return &p }
-func ppTypeI(v TypeI) **TypeI { p := &v; return &p }
+func ptr[T any](v T) *T     { return &v }
+func pptr[T any](v T) **T   { return ptr(ptr(v)) }
+func ppptr[T any](v T) ***T { return ptr(pptr(v)) }
 
 func TestDecoder(t *testing.T) {
 	fixtures := []struct {
@@ -456,42 +440,42 @@ string,"{""key"":""value""}"
 		{
 			desc: "basic types",
 			in: "int,pint,int8,pint8,int16,pint16,int32,pint32,int64,pint64,uint," +
-				"puint,uint8,puint8,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
+				"puint,uint8,ptr[uint8](,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,true,true,true,1," +
 				EncodedBinary + "," + EncodedBinaryLarge,
 			out: func() any { return &TypeF{} },
 			expected: &TypeF{
 				Int:      1,
-				Pint:     pint(2),
+				Pint:     ptr(2),
 				Int8:     3,
-				Pint8:    pint8(4),
+				Pint8:    ptr[int8](4),
 				Int16:    5,
-				Pint16:   pint16(6),
+				Pint16:   ptr[int16](6),
 				Int32:    7,
-				Pint32:   pint32(8),
+				Pint32:   ptr[int32](8),
 				Int64:    9,
-				Pint64:   pint64(10),
+				Pint64:   ptr[int64](10),
 				UInt:     11,
-				Puint:    puint(12),
+				Puint:    ptr[uint](12),
 				Uint8:    13,
-				Puint8:   puint8(14),
+				Puint8:   ptr[uint8](14),
 				Uint16:   15,
-				Puint16:  puint16(16),
+				Puint16:  ptr[uint16](16),
 				Uint32:   17,
-				Puint32:  puint32(18),
+				Puint32:  ptr[uint32](18),
 				Uint64:   19,
-				Puint64:  puint64(20),
+				Puint64:  ptr[uint64](20),
 				Float32:  21,
-				Pfloat32: pfloat32(22),
+				Pfloat32: ptr[float32](22),
 				Float64:  23,
-				Pfloat64: pfloat64(24),
+				Pfloat64: ptr[float64](24),
 				String:   "25",
-				PString:  pstring("26"),
+				PString:  ptr("26"),
 				Bool:     true,
-				Pbool:    pbool(true),
+				Pbool:    ptr(true),
 				V:        "true",
-				Pv:       pinterface("1"),
+				Pv:       ptr[any]("1"),
 				Binary:   Binary,
 				PBinary:  &BinaryLarge,
 			},
@@ -511,7 +495,7 @@ string,"{""key"":""value""}"
 				"uint",
 				"puint",
 				"uint8",
-				"puint8",
+				"ptr[uint8](",
 				"uint16",
 				"puint16",
 				"uint32",
@@ -579,9 +563,9 @@ string,"{""key"":""value""}"
 				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
 				Iface                  any                  `csv:"3"`
 			}{
-				ValueRecUnmarshaler{pstring("1")},
-				&ValueRecUnmarshaler{pstring("2")},
-				ValueRecUnmarshaler{pstring("3")},
+				ValueRecUnmarshaler{ptr("1")},
+				&ValueRecUnmarshaler{ptr("2")},
+				ValueRecUnmarshaler{ptr("3")},
 			},
 			expectedRecord: []string{"1", "2", "3"},
 			header:         []string{"1", "2", "3"},
@@ -608,10 +592,10 @@ string,"{""key"":""value""}"
 				Iface                  any                  `csv:"3"`
 				Iface2                 any                  `csv:"4"`
 			}{
-				ValueRecUnmarshaler{pstring("scan: 1")},
-				&ValueRecUnmarshaler{pstring("scan: 2")},
-				ValueRecUnmarshaler{pstring("scan: 3")},
-				&ValueRecUnmarshaler{pstring("scan: 4")},
+				ValueRecUnmarshaler{ptr("scan: 1")},
+				&ValueRecUnmarshaler{ptr("scan: 2")},
+				ValueRecUnmarshaler{ptr("scan: 3")},
+				&ValueRecUnmarshaler{ptr("scan: 4")},
 			},
 			unmarshalers: unmarshalersSlice{
 				unmarshalFunc(func(data []byte, v ValueRecUnmarshaler) error {
@@ -643,10 +627,10 @@ string,"{""key"":""value""}"
 				Iface                  any                  `csv:"3"`
 				Iface2                 any                  `csv:"4"`
 			}{
-				ValueRecUnmarshaler{pstring("scan: 1")},
-				&ValueRecUnmarshaler{pstring("scan: 2")},
-				ValueRecUnmarshaler{pstring("scan: 3")},
-				&ValueRecUnmarshaler{pstring("scan: 4")},
+				ValueRecUnmarshaler{ptr("scan: 1")},
+				&ValueRecUnmarshaler{ptr("scan: 2")},
+				ValueRecUnmarshaler{ptr("scan: 3")},
+				&ValueRecUnmarshaler{ptr("scan: 4")},
 			},
 			unmarshalers: unmarshalersSlice{
 				unmarshalFunc(func(data []byte, v interface{ Scan([]byte) error }) error {
@@ -678,10 +662,10 @@ string,"{""key"":""value""}"
 				Iface                      any                      `csv:"3"`
 				Iface2                     any                      `csv:"4"`
 			}{
-				ValueRecTextUnmarshaler{pstring("1")},
-				&ValueRecTextUnmarshaler{pstring("2")},
-				ValueRecTextUnmarshaler{pstring("3")},
-				&ValueRecTextUnmarshaler{pstring("4")},
+				ValueRecTextUnmarshaler{ptr("1")},
+				&ValueRecTextUnmarshaler{ptr("2")},
+				ValueRecTextUnmarshaler{ptr("3")},
+				&ValueRecTextUnmarshaler{ptr("4")},
 			},
 			expectedRecord: []string{"1", "2", "3", "4"},
 			header:         []string{"1", "2", "3", "4"},
@@ -937,23 +921,23 @@ string,"{""key"":""value""}"
 			in:   "Int,Float,String,Bool,Unmarshaler,DoublePtr\n10,3.14,string,true,lol,100",
 			out: func() any {
 				return &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr any }{
-					Int:         pint(0),
-					Float:       pfloat64(0),
-					String:      pstring(""),
-					Bool:        pbool(false),
+					Int:         ptr(0),
+					Float:       ptr[float64](0),
+					String:      ptr(""),
+					Bool:        ptr(false),
 					Unmarshaler: &CSVUnmarshaler{},
-					DoublePtr:   ppint(0),
+					DoublePtr:   pptr(0),
 				}
 			},
 			expected: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr any }{
-				Int:    pint(10),
-				Float:  pfloat64(3.14),
-				String: pstring("string"),
-				Bool:   pbool(true),
+				Int:    ptr(10),
+				Float:  ptr(3.14),
+				String: ptr("string"),
+				Bool:   ptr(true),
 				Unmarshaler: &CSVUnmarshaler{
 					String: "unmarshalCSV:lol",
 				},
-				DoublePtr: ppint(100),
+				DoublePtr: pptr(100),
 			},
 			expectedRecord: []string{"10", "3.14", "string", "true", "lol", "100"},
 			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler", "DoublePtr"},
@@ -963,19 +947,19 @@ string,"{""key"":""value""}"
 			in:   "Int,Float,String,Bool,Unmarshaler\n10,3.14,string,true,lol",
 			out: func() any {
 				return &struct{ Int, Float, String, Bool, Unmarshaler *any }{
-					Int:         pinterface(int(0)),
-					Float:       pinterface(float64(0)),
-					String:      pinterface(""),
-					Bool:        pinterface(false),
-					Unmarshaler: pinterface(CSVUnmarshaler{}),
+					Int:         ptr[any](int(0)),
+					Float:       ptr[any](float64(0)),
+					String:      ptr[any](""),
+					Bool:        ptr[any](false),
+					Unmarshaler: ptr[any](CSVUnmarshaler{}),
 				}
 			},
 			expected: &struct{ Int, Float, String, Bool, Unmarshaler *any }{
-				Int:         pinterface("10"),
-				Float:       pinterface("3.14"),
-				String:      pinterface("string"),
-				Bool:        pinterface("true"),
-				Unmarshaler: pinterface("lol"),
+				Int:         ptr[any]("10"),
+				Float:       ptr[any]("3.14"),
+				String:      ptr[any]("string"),
+				Bool:        ptr[any]("true"),
+				Unmarshaler: ptr[any]("lol"),
 			},
 			expectedRecord: []string{"10", "3.14", "string", "true", "lol"},
 			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler"},
@@ -985,23 +969,23 @@ string,"{""key"":""value""}"
 			in:   "Int,Float,String,Bool,Unmarshaler,DoublePtr\n10,3.14,string,true,lol,30",
 			out: func() any {
 				return &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr *any }{
-					Int:         pinterface(pint(0)),
-					Float:       pinterface(pfloat64(0)),
-					String:      pinterface(pstring("")),
-					Bool:        pinterface(pbool(false)),
-					Unmarshaler: pinterface(&CSVUnmarshaler{}),
-					DoublePtr:   pinterface(ppint(0)),
+					Int:         ptr[any](ptr(0)),
+					Float:       ptr[any](ptr[float64](0)),
+					String:      ptr[any](ptr("")),
+					Bool:        ptr[any](ptr(false)),
+					Unmarshaler: ptr[any](&CSVUnmarshaler{}),
+					DoublePtr:   ptr[any](pptr(0)),
 				}
 			},
 			expected: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr *any }{
-				Int:    pinterface(pint(10)),
-				Float:  pinterface(pfloat64(3.14)),
-				String: pinterface(pstring("string")),
-				Bool:   pinterface(pbool(true)),
-				Unmarshaler: pinterface(&CSVUnmarshaler{
+				Int:    ptr[any](ptr(10)),
+				Float:  ptr[any](ptr(3.14)),
+				String: ptr[any](ptr("string")),
+				Bool:   ptr[any](ptr(true)),
+				Unmarshaler: ptr[any](&CSVUnmarshaler{
 					String: "unmarshalCSV:lol",
 				}),
-				DoublePtr: pinterface(ppint(30)),
+				DoublePtr: ptr[any](pptr(30)),
 			},
 			expectedRecord: []string{"10", "3.14", "string", "true", "lol", "30"},
 			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler", "DoublePtr"},
@@ -1055,8 +1039,8 @@ string,"{""key"":""value""}"
 			in:   "String,int\nfirst,1\nsecond,2",
 			out:  func() any { return &[]**TypeI{} },
 			expected: &[]**TypeI{
-				ppTypeI(TypeI{String: "first", Int: 1}),
-				ppTypeI(TypeI{String: "second", Int: 2}),
+				pptr(TypeI{String: "first", Int: 1}),
+				pptr(TypeI{String: "second", Int: 2}),
 			},
 			expectedRecord: nil,
 			header:         []string{"String", "int"},
@@ -1112,8 +1096,8 @@ string,"{""key"":""value""}"
 			in:   "String,int\nfirst,1\nsecond,2",
 			out:  func() any { return &[2]**TypeI{} },
 			expected: &[2]**TypeI{
-				ppTypeI(TypeI{String: "first", Int: 1}),
-				ppTypeI(TypeI{String: "second", Int: 2}),
+				pptr(TypeI{String: "first", Int: 1}),
+				pptr(TypeI{String: "second", Int: 2}),
 			},
 			expectedRecord: []string{"second", "2"},
 			header:         []string{"String", "int"},
@@ -1286,7 +1270,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "invalid int under interface value",
 			in:   "Int,Foo\n,",
-			out:  func() any { return &struct{ Int any }{Int: pint(0)} },
+			out:  func() any { return &struct{ Int any }{Int: ptr(0)} },
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(int(0))},
 		},
 		{
@@ -1311,14 +1295,14 @@ string,"{""key"":""value""}"
 			out: func() any {
 				return &Embedded17{
 					Embedded18: &Embedded18{
-						X: pfloat64(10),
-						Y: pfloat64(20),
+						X: ptr[float64](10),
+						Y: ptr[float64](20),
 					},
 				}
 			},
 			expected: &Embedded17{
 				Embedded18: &Embedded18{
-					X: pfloat64(1),
+					X: ptr[float64](1),
 					Y: nil,
 				},
 			},
@@ -1330,7 +1314,7 @@ string,"{""key"":""value""}"
 			in:   "X,Y\n1,",
 			out:  func() any { return &Embedded17{} },
 			expected: &Embedded17{
-				Embedded18: &Embedded18{X: pfloat64(1)},
+				Embedded18: &Embedded18{X: ptr[float64](1)},
 			},
 			expectedRecord: []string{"1", ""},
 			header:         []string{"X", "Y"},
@@ -1354,13 +1338,13 @@ string,"{""key"":""value""}"
 		{
 			desc: "blank values on pointers decode to nil",
 			in: "int,pint,int8,pint8,int16,pint16,int32,pint32,int64,pint64,uint," +
-				"puint,uint8,puint8,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
+				"puint,uint8,ptr[uint8](,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,,3,,5,,7,,9,,11,,13,,15,,17,,19,,21,,23,,25,,true,,true,," +
 				EncodedBinary + "," + "",
 			out: func() any {
 				return &TypeF{
-					Pint: pint(10),
+					Pint: ptr(10),
 				}
 			},
 			expected: &TypeF{
@@ -1413,7 +1397,7 @@ string,"{""key"":""value""}"
 				"uint",
 				"puint",
 				"uint8",
-				"puint8",
+				"ptr[uint8](",
 				"uint16",
 				"puint16",
 				"uint32",
@@ -1443,7 +1427,7 @@ string,"{""key"":""value""}"
 					Pint   *int
 					Iface  any
 					Piface *any
-				}{Iface: pint(10), Piface: pinterface(pint(10))}
+				}{Iface: ptr(10), Piface: ptr[any](ptr(10))}
 			},
 			expected: &struct {
 				Int    int
@@ -1452,9 +1436,9 @@ string,"{""key"":""value""}"
 				Piface *any
 			}{
 				Int:    10,
-				Pint:   pint(11),
-				Iface:  pint(12),
-				Piface: pinterface(pint(13)),
+				Pint:   ptr(11),
+				Iface:  ptr(12),
+				Piface: ptr[any](ptr(13)),
 			},
 			unmarshalers: unmarshalersSlice{
 				unmarshalFunc(func(data []byte, n *int) error {
@@ -1476,14 +1460,14 @@ string,"{""key"":""value""}"
 				return &struct {
 					Iface  any
 					Piface *any
-				}{Iface: 10, Piface: pinterface(10)}
+				}{Iface: 10, Piface: ptr[any](10)}
 			},
 			expected: &struct {
 				Iface  any
 				Piface *any
 			}{
 				Iface:  "a",
-				Piface: pinterface("b"),
+				Piface: ptr[any]("b"),
 			},
 			unmarshalers: unmarshalersSlice{
 				unmarshalFunc(func(data []byte, n *int) error {
@@ -1511,7 +1495,7 @@ string,"{""key"":""value""}"
 					PScanner *fmt.Scanner
 				}{
 					Iface:    &IntStruct{},
-					Piface:   pinterface(&IntStruct{}),
+					Piface:   ptr[any](&IntStruct{}),
 					Scanner:  &IntStruct{},
 					PScanner: &[]fmt.Scanner{&IntStruct{}}[0],
 				}
@@ -1527,7 +1511,7 @@ string,"{""key"":""value""}"
 				Int:      IntStruct{Value: 10},
 				Pint:     &IntStruct{Value: 20},
 				Iface:    &IntStruct{Value: 30},
-				Piface:   pinterface(&IntStruct{Value: 40}),
+				Piface:   ptr[any](&IntStruct{Value: 40}),
 				Scanner:  &IntStruct{Value: 50},
 				PScanner: &[]fmt.Scanner{&IntStruct{Value: 60}}[0],
 			},
@@ -1920,7 +1904,7 @@ s,1,3.14,true
 	t.Run("map", func(t *testing.T) {
 		t.Run("receives non-pointer and non-interface zero values", func(t *testing.T) {
 			data := []byte("int,pint,int8,pint8,int16,pint16,int32,pint32,int64,pint64,uint," +
-				"puint,uint8,puint8,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
+				"puint,uint8,ptr[uint8](,uint16,puint16,uint32,puint32,uint64,puint64,float32," +
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,true,true,true,1," +
 				EncodedBinary + "," + EncodedBinaryLarge)
@@ -2056,9 +2040,9 @@ s,1,3.14,true
 				F6 *any
 			}{
 				F3: int(0), // initialize an interface with a different type
-				F4: pint(0),
+				F4: ptr(0),
 				F5: (*int)(nil),
-				F6: pinterface(ppint(0)),
+				F6: ptr[any](pptr(0)),
 			}
 			if err := dec.Decode(&out); err != nil {
 				t.Errorf("want err=nil; got %v", err)

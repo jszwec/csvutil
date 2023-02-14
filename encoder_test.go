@@ -151,35 +151,35 @@ func TestEncoder(t *testing.T) {
 			in: []any{
 				TypeF{
 					Int:      1,
-					Pint:     pint(2),
+					Pint:     ptr(2),
 					Int8:     3,
-					Pint8:    pint8(4),
+					Pint8:    ptr[int8](4),
 					Int16:    5,
-					Pint16:   pint16(6),
+					Pint16:   ptr[int16](6),
 					Int32:    7,
-					Pint32:   pint32(8),
+					Pint32:   ptr[int32](8),
 					Int64:    9,
-					Pint64:   pint64(10),
+					Pint64:   ptr[int64](10),
 					UInt:     11,
-					Puint:    puint(12),
+					Puint:    ptr[uint](12),
 					Uint8:    13,
-					Puint8:   puint8(14),
+					Puint8:   ptr[uint8](14),
 					Uint16:   15,
-					Puint16:  puint16(16),
+					Puint16:  ptr[uint16](16),
 					Uint32:   17,
-					Puint32:  puint32(18),
+					Puint32:  ptr[uint32](18),
 					Uint64:   19,
-					Puint64:  puint64(20),
+					Puint64:  ptr[uint64](20),
 					Float32:  21,
-					Pfloat32: pfloat32(22),
+					Pfloat32: ptr[float32](22),
 					Float64:  23,
-					Pfloat64: pfloat64(24),
+					Pfloat64: ptr[float64](24),
 					String:   "25",
-					PString:  pstring("26"),
+					PString:  ptr("26"),
 					Bool:     true,
-					Pbool:    pbool(true),
+					Pbool:    ptr(true),
 					V:        "true",
-					Pv:       pinterface("1"),
+					Pv:       ptr[any]("1"),
 					Binary:   Binary,
 					PBinary:  &BinaryLarge,
 				},
@@ -188,7 +188,7 @@ func TestEncoder(t *testing.T) {
 			out: [][]string{
 				{
 					"int", "pint", "int8", "pint8", "int16", "pint16", "int32",
-					"pint32", "int64", "pint64", "uint", "puint", "uint8", "puint8",
+					"pint32", "int64", "pint64", "uint", "puint", "uint8", "ptr[uint8](",
 					"uint16", "puint16", "uint32", "puint32", "uint64", "puint64",
 					"float32", "pfloat32", "float64", "pfloat64", "string", "pstring",
 					"bool", "pbool", "interface", "pinterface", "binary", "pbinary",
@@ -243,12 +243,12 @@ func TestEncoder(t *testing.T) {
 					PBool   *bool   `csv:",omitempty"`
 					Iint    *any    `csv:",omitempty"`
 				}{
-					pint(0),
-					ppint(0),
+					ptr(0),
+					pptr(0),
 					new(*int),
-					pstring(""),
-					pbool(false),
-					pinterface(0),
+					ptr(""),
+					ptr(false),
+					ptr[any](0),
 				},
 			},
 			out: [][]string{
@@ -280,14 +280,14 @@ func TestEncoder(t *testing.T) {
 					IPint any `csv:",omitempty"`
 				}{
 					0,
-					pint(0),
+					ptr(0),
 				},
 				struct {
 					Iint  any `csv:",omitempty"`
 					IPint any `csv:",omitempty"`
 				}{
 					1,
-					pint(1),
+					ptr(1),
 				},
 			},
 			out: [][]string{
@@ -311,7 +311,7 @@ func TestEncoder(t *testing.T) {
 					IPint any `csv:",omitempty"`
 				}{
 					(*int)(nil),
-					pinterface((*int)(nil)),
+					ptr[any]((*int)(nil)),
 				},
 			},
 			out: [][]string{
@@ -885,9 +885,9 @@ func TestEncoder(t *testing.T) {
 					Iface  any
 					Piface *any
 				}{
-					Pint:   pint(0),
+					Pint:   ptr(0),
 					Iface:  34,
-					Piface: pinterface(34),
+					Piface: ptr[any](34),
 				},
 			},
 			regFunc: []any{
@@ -907,9 +907,9 @@ func TestEncoder(t *testing.T) {
 					Iface  any
 					Piface *any
 				}{
-					Pint:   pint(0),
+					Pint:   ptr(0),
 					Iface:  34,
-					Piface: pinterface(34),
+					Piface: ptr[any](34),
 				},
 			},
 			regFunc: []any{
@@ -929,9 +929,9 @@ func TestEncoder(t *testing.T) {
 					Iface  any
 					Piface *any
 				}{
-					Pint:   pint(0),
+					Pint:   ptr(0),
 					Iface:  34,
-					Piface: pinterface(pint(34)),
+					Piface: ptr[any](ptr(34)),
 				},
 			},
 			regFunc: []any{
@@ -951,9 +951,9 @@ func TestEncoder(t *testing.T) {
 					Iface  any
 					Piface *any
 				}{
-					Pint:   pint(0),
+					Pint:   ptr(0),
 					Iface:  34,
-					Piface: pinterface(pint(34)),
+					Piface: ptr[any](ptr(34)),
 				},
 			},
 			regFunc: []any{
@@ -973,9 +973,9 @@ func TestEncoder(t *testing.T) {
 					Iface  any
 					Piface *any
 				}{
-					Pint:   pint(0),
+					Pint:   ptr(0),
 					Iface:  34,
-					Piface: pinterface(pint(34)),
+					Piface: ptr[any](ptr(34)),
 				},
 			},
 			regFunc: []any{
@@ -996,9 +996,9 @@ func TestEncoder(t *testing.T) {
 					Iface  any
 					Piface *any
 				}{
-					Pint:   pint(0),
+					Pint:   ptr(0),
 					Iface:  34,
-					Piface: pinterface(pint(34)),
+					Piface: ptr[any](ptr(34)),
 				},
 			},
 			regFunc: []any{
@@ -1170,20 +1170,20 @@ func TestEncoder(t *testing.T) {
 				}{1},
 				struct {
 					V any
-				}{pint(10)},
+				}{ptr(10)},
 				struct {
 					V any
-				}{ppint(100)},
+				}{pptr(100)},
 				struct {
 					V any
-				}{pppint(1000)},
+				}{ppptr(1000)},
 				struct {
 					V *any
-				}{pinterface(ppint(10000))},
+				}{ptr[any](pptr(10000))},
 				struct {
 					V *any
 				}{func() *any {
-					var v any = pppint(100000)
+					var v any = ppptr(100000)
 					var vv any = v
 					return &vv
 				}()},
@@ -1613,7 +1613,7 @@ func TestEncoder(t *testing.T) {
 						"uint",
 						"puint",
 						"uint8",
-						"puint8",
+						"ptr[uint8](",
 						"uint16",
 						"puint16",
 						"uint32",
@@ -1653,7 +1653,7 @@ func TestEncoder(t *testing.T) {
 						"uint",
 						"puint",
 						"uint8",
-						"puint8",
+						"ptr[uint8](",
 						"uint16",
 						"puint16",
 						"uint32",
@@ -1693,7 +1693,7 @@ func TestEncoder(t *testing.T) {
 						"uint",
 						"puint",
 						"uint8",
-						"puint8",
+						"ptr[uint8](",
 						"uint16",
 						"puint16",
 						"uint32",
@@ -1733,7 +1733,7 @@ func TestEncoder(t *testing.T) {
 						"uint",
 						"puint",
 						"uint8",
-						"puint8",
+						"ptr[uint8](",
 						"uint16",
 						"puint16",
 						"uint32",

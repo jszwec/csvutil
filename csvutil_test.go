@@ -461,7 +461,7 @@ func TestMarshal(t *testing.T) {
 			{
 				desc:     "*int64",
 				expected: "csvutil: Marshal(invalid type *int64)",
-				v:        pint64(1),
+				v:        ptr[int64](1),
 			},
 			{
 				desc:     "[]int64",
@@ -698,7 +698,7 @@ func TestHeader(t *testing.T) {
 				"uint",
 				"puint",
 				"uint8",
-				"puint8",
+				"ptr[uint8](",
 				"uint16",
 				"puint16",
 				"uint32",
@@ -737,7 +737,7 @@ func TestHeader(t *testing.T) {
 				"uint",
 				"puint",
 				"uint8",
-				"puint8",
+				"ptr[uint8](",
 				"uint16",
 				"puint16",
 				"uint32",
@@ -776,7 +776,7 @@ func TestHeader(t *testing.T) {
 				"uint",
 				"puint",
 				"uint8",
-				"puint8",
+				"ptr[uint8](",
 				"uint16",
 				"puint16",
 				"uint32",
@@ -841,15 +841,15 @@ func TestParity(t *testing.T) {
 	in := []A{
 		{
 			Int:      0,
-			Pint:     pint(0),
+			Pint:     ptr(0),
 			OmitInt:  0,
-			OmitPint: pint(0),
+			OmitPint: ptr(0),
 		},
 		{
 			Int:      1,
-			Pint:     pint(1),
+			Pint:     ptr(1),
 			OmitInt:  1,
-			OmitPint: pint(1),
+			OmitPint: ptr(1),
 		},
 		{
 			Int:      0,
