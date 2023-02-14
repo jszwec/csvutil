@@ -118,7 +118,8 @@ func NewEncoder(w Writer) *Encoder {
 
 // Register registers a custom encoding function for a concrete type or interface.
 // The argument f must be of type:
-// 	func(T) ([]byte, error)
+//
+//	func(T) ([]byte, error)
 //
 // T must be a concrete type such as Foo or *Foo, or interface that has at
 // least one method.
@@ -128,13 +129,13 @@ func NewEncoder(w Writer) *Encoder {
 // in order they were registered.
 //
 // Register panics if:
-//	- f does not match the right signature
-//	- f is an empty interface
-//	- f was already registered
+//   - f does not match the right signature
+//   - f is an empty interface
+//   - f was already registered
 //
 // Register is based on the encoding/json proposal:
 // https://github.com/golang/go/issues/5901.
-func (e *Encoder) Register(f interface{}) {
+func (e *Encoder) Register(f any) {
 	v := reflect.ValueOf(f)
 	typ := v.Type()
 
@@ -224,22 +225,22 @@ func (enc *Encoder) SetHeader(header []string) {
 //
 // Examples of struct tags:
 //
-// 	// Field appears as 'myName' header in CSV encoding.
-// 	Field int `csv:"myName"`
+//	// Field appears as 'myName' header in CSV encoding.
+//	Field int `csv:"myName"`
 //
-// 	// Field appears as 'Field' header in CSV encoding.
-// 	Field int
+//	// Field appears as 'Field' header in CSV encoding.
+//	Field int
 //
-// 	// Field appears as 'myName' header in CSV encoding and is an empty string
+//	// Field appears as 'myName' header in CSV encoding and is an empty string
 //	// if Field is 0.
-// 	Field int `csv:"myName,omitempty"`
+//	Field int `csv:"myName,omitempty"`
 //
-// 	// Field appears as 'Field' header in CSV encoding and is an empty string
+//	// Field appears as 'Field' header in CSV encoding and is an empty string
 //	// if Field is 0.
-// 	Field int `csv:",omitempty"`
+//	Field int `csv:",omitempty"`
 //
-// 	// Encode ignores this field.
-// 	Field int `csv:"-"`
+//	// Encode ignores this field.
+//	Field int `csv:"-"`
 //
 //	// Encode treats this field exactly as if it was an embedded field and adds
 //	// "my_prefix_" to each field's name.
@@ -253,7 +254,7 @@ func (enc *Encoder) SetHeader(header []string) {
 //
 // Encode doesn't flush data. The caller is responsible for calling Flush() if
 // the used Writer supports it.
-func (e *Encoder) Encode(v interface{}) error {
+func (e *Encoder) Encode(v any) error {
 	return e.encode(reflect.ValueOf(v))
 }
 
@@ -267,7 +268,7 @@ func (e *Encoder) Encode(v interface{}) error {
 // EncodeHeader is like Header function, but it works with the Encoder and writes
 // directly to the output stream. Look at Header documentation for the exact
 // header encoding rules.
-func (e *Encoder) EncodeHeader(v interface{}) error {
+func (e *Encoder) EncodeHeader(v any) error {
 	typ, err := valueType(v)
 	if err != nil {
 		return err

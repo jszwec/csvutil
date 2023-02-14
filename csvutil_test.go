@@ -9,8 +9,8 @@ func TestUnmarshal(t *testing.T) {
 	fixture := []struct {
 		desc string
 		src  []byte
-		in   interface{}
-		out  interface{}
+		in   any
+		out  any
 	}{
 		{
 			desc: "type with two records",
@@ -177,10 +177,10 @@ func TestUnmarshal(t *testing.T) {
 
 		var fixtures = []struct {
 			desc     string
-			v        interface{}
+			v        any
 			expected string
 		}{
-			{"nil interface", interface{}(nil), "csvutil: Unmarshal(nil)"},
+			{"nil interface", any(nil), "csvutil: Unmarshal(nil)"},
 			{"nil", nil, "csvutil: Unmarshal(nil)"},
 			{"non pointer struct", struct{}{}, "csvutil: Unmarshal(non-pointer struct {})"},
 			{"invalid type double pointer int", (**int)(nil), "csvutil: Unmarshal(invalid type **int)"},
@@ -279,7 +279,7 @@ line2,"line2"`),
 func TestMarshal(t *testing.T) {
 	fixtures := []struct {
 		desc string
-		v    interface{}
+		v    any
 		out  [][]string
 		err  error
 	}{
@@ -353,7 +353,7 @@ func TestMarshal(t *testing.T) {
 		},
 		{
 			desc: "slice pointer wrapped in interface",
-			v: func() (v interface{}) {
+			v: func() (v any) {
 				v = &[]*TypeI{
 					{String: "string", Int: 10},
 				}
@@ -366,7 +366,7 @@ func TestMarshal(t *testing.T) {
 		},
 		{
 			desc: "array pointer wrapped in interface",
-			v: func() (v interface{}) {
+			v: func() (v any) {
 				v = &[1]*TypeI{
 					{String: "string", Int: 10},
 				}
@@ -450,7 +450,7 @@ func TestMarshal(t *testing.T) {
 		fixtures := []struct {
 			desc     string
 			expected string
-			v        interface{}
+			v        any
 		}{
 			{
 				desc:     "int64",
@@ -554,7 +554,7 @@ type Embedded16 struct {
 func TestHeader(t *testing.T) {
 	fixture := []struct {
 		desc   string
-		v      interface{}
+		v      any
 		tag    string
 		header []string
 		err    error
@@ -889,7 +889,7 @@ func checkErr(expected, err error) bool {
 //
 // This copy exists because we want to avoid dependencies like:
 // "golang.org/x/xerrors"
-func asError(err error, target interface{}) bool {
+func asError(err error, target any) bool {
 	if target == nil {
 		panic("errors: target cannot be nil")
 	}
@@ -907,7 +907,7 @@ func asError(err error, target interface{}) bool {
 			val.Elem().Set(reflect.ValueOf(err))
 			return true
 		}
-		if x, ok := err.(interface{ As(interface{}) bool }); ok && x.As(target) {
+		if x, ok := err.(interface{ As(any) bool }); ok && x.As(target) {
 			return true
 		}
 		err = unwrap(err)

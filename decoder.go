@@ -10,7 +10,7 @@ type decField struct {
 	columnIndex int
 	field
 	decodeFunc
-	zero interface{}
+	zero any
 }
 
 // A Decoder reads and decodes string records into structs.
@@ -45,7 +45,7 @@ type Decoder struct {
 	// value of that type.
 	//
 	// Map must be set before the first call to Decode and not changed after it.
-	Map func(field, col string, v interface{}) string
+	Map func(field, col string, v any) string
 
 	r          Reader
 	typeKey    typeKey
@@ -170,7 +170,7 @@ func NewDecoder(r Reader, header ...string) (dec *Decoder, err error) {
 //
 // Fields with inline tags that have a non-empty prefix must not be cyclic
 // structures. Passing such values to Decode will result in an infinite loop.
-func (d *Decoder) Decode(v interface{}) (err error) {
+func (d *Decoder) Decode(v any) (err error) {
 	val := reflect.ValueOf(v)
 	if val.Kind() != reflect.Ptr || val.IsNil() {
 		return &InvalidDecodeError{Type: reflect.TypeOf(v)}
@@ -264,7 +264,7 @@ func (d *Decoder) Unused() []int {
 //
 // Deprecated: use UnmarshalFunc function with type parameter instead. The benefits
 // are type safety and much better performance.
-func (d *Decoder) Register(f interface{}) {
+func (d *Decoder) Register(f any) {
 	v := reflect.ValueOf(f)
 	typ := v.Type()
 

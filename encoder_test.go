@@ -13,11 +13,11 @@ import (
 
 var Error = errors.New("error")
 
-var nilIface interface{}
+var nilIface any
 
 var nilPtr *TypeF
 
-var nilIfacePtr interface{} = nilPtr
+var nilIfacePtr any = nilPtr
 
 type embeddedMap map[string]string
 
@@ -117,21 +117,21 @@ type Inline8 struct {
 }
 
 type TypeH struct {
-	Int     int         `csv:"int,omitempty"`
-	Int8    int8        `csv:"int8,omitempty"`
-	Int16   int16       `csv:"int16,omitempty"`
-	Int32   int32       `csv:"int32,omitempty"`
-	Int64   int64       `csv:"int64,omitempty"`
-	UInt    uint        `csv:"uint,omitempty"`
-	Uint8   uint8       `csv:"uint8,omitempty"`
-	Uint16  uint16      `csv:"uint16,omitempty"`
-	Uint32  uint32      `csv:"uint32,omitempty"`
-	Uint64  uint64      `csv:"uint64,omitempty"`
-	Float32 float32     `csv:"float32,omitempty"`
-	Float64 float64     `csv:"float64,omitempty"`
-	String  string      `csv:"string,omitempty"`
-	Bool    bool        `csv:"bool,omitempty"`
-	V       interface{} `csv:"interface,omitempty"`
+	Int     int     `csv:"int,omitempty"`
+	Int8    int8    `csv:"int8,omitempty"`
+	Int16   int16   `csv:"int16,omitempty"`
+	Int32   int32   `csv:"int32,omitempty"`
+	Int64   int64   `csv:"int64,omitempty"`
+	UInt    uint    `csv:"uint,omitempty"`
+	Uint8   uint8   `csv:"uint8,omitempty"`
+	Uint16  uint16  `csv:"uint16,omitempty"`
+	Uint32  uint32  `csv:"uint32,omitempty"`
+	Uint64  uint64  `csv:"uint64,omitempty"`
+	Float32 float32 `csv:"float32,omitempty"`
+	Float64 float64 `csv:"float64,omitempty"`
+	String  string  `csv:"string,omitempty"`
+	Bool    bool    `csv:"bool,omitempty"`
+	V       any     `csv:"interface,omitempty"`
 }
 
 type TypeM struct {
@@ -141,14 +141,14 @@ type TypeM struct {
 func TestEncoder(t *testing.T) {
 	fixtures := []struct {
 		desc    string
-		in      []interface{}
-		regFunc []interface{}
+		in      []any
+		regFunc []any
 		out     [][]string
 		err     error
 	}{
 		{
 			desc: "test all types",
-			in: []interface{}{
+			in: []any{
 				TypeF{
 					Int:      1,
 					Pint:     pint(2),
@@ -206,7 +206,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "tags and unexported fields",
-			in: []interface{}{
+			in: []any{
 				TypeG{
 					String:      "string",
 					Int:         1,
@@ -222,7 +222,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "omitempty tags",
-			in: []interface{}{
+			in: []any{
 				TypeH{},
 			},
 			out: [][]string{
@@ -234,14 +234,14 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "omitempty tags on pointers - non nil default values",
-			in: []interface{}{
+			in: []any{
 				struct {
-					Pint    *int         `csv:",omitempty"`
-					PPint   **int        `csv:",omitempty"`
-					PPint2  **int        `csv:",omitempty"`
-					PString *string      `csv:",omitempty"`
-					PBool   *bool        `csv:",omitempty"`
-					Iint    *interface{} `csv:",omitempty"`
+					Pint    *int    `csv:",omitempty"`
+					PPint   **int   `csv:",omitempty"`
+					PPint2  **int   `csv:",omitempty"`
+					PString *string `csv:",omitempty"`
+					PBool   *bool   `csv:",omitempty"`
+					Iint    *any    `csv:",omitempty"`
 				}{
 					pint(0),
 					ppint(0),
@@ -258,13 +258,13 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "omitempty tags on pointers - nil ptrs",
-			in: []interface{}{
+			in: []any{
 				struct {
-					Pint    *int         `csv:",omitempty"`
-					PPint   **int        `csv:",omitempty"`
-					PString *string      `csv:",omitempty"`
-					PBool   *bool        `csv:",omitempty"`
-					Iint    *interface{} `csv:",omitempty"`
+					Pint    *int    `csv:",omitempty"`
+					PPint   **int   `csv:",omitempty"`
+					PString *string `csv:",omitempty"`
+					PBool   *bool   `csv:",omitempty"`
+					Iint    *any    `csv:",omitempty"`
 				}{},
 			},
 			out: [][]string{
@@ -274,17 +274,17 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "omitempty tags on interfaces - non nil default values",
-			in: []interface{}{
+			in: []any{
 				struct {
-					Iint  interface{} `csv:",omitempty"`
-					IPint interface{} `csv:",omitempty"`
+					Iint  any `csv:",omitempty"`
+					IPint any `csv:",omitempty"`
 				}{
 					0,
 					pint(0),
 				},
 				struct {
-					Iint  interface{} `csv:",omitempty"`
-					IPint interface{} `csv:",omitempty"`
+					Iint  any `csv:",omitempty"`
+					IPint any `csv:",omitempty"`
 				}{
 					1,
 					pint(1),
@@ -298,17 +298,17 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "omitempty tags on interfaces - nil",
-			in: []interface{}{
+			in: []any{
 				struct {
-					Iint  interface{} `csv:",omitempty"`
-					IPint interface{} `csv:",omitempty"`
+					Iint  any `csv:",omitempty"`
+					IPint any `csv:",omitempty"`
 				}{
 					nil,
 					nil,
 				},
 				struct {
-					Iint  interface{} `csv:",omitempty"`
-					IPint interface{} `csv:",omitempty"`
+					Iint  any `csv:",omitempty"`
+					IPint any `csv:",omitempty"`
 				}{
 					(*int)(nil),
 					pinterface((*int)(nil)),
@@ -322,7 +322,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded types #1",
-			in: []interface{}{
+			in: []any{
 				TypeA{
 					Embedded1: Embedded1{
 						String: "string1",
@@ -343,7 +343,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded non struct tagged types",
-			in: []interface{}{
+			in: []any{
 				TypeB{
 					Embedded3: Embedded3{"key": "val"},
 					String:    "string1",
@@ -356,7 +356,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded non struct tagged types with pointer receiver MarshalCSV",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					Embedded14 `csv:"json"`
 					A          Embedded14 `csv:"json2"`
@@ -380,7 +380,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded non struct tagged types with pointer receiver MarshalText",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					Embedded15 `csv:"json"`
 					A          Embedded15 `csv:"json2"`
@@ -404,7 +404,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded pointer types",
-			in: []interface{}{
+			in: []any{
 				TypeC{
 					Embedded1: &Embedded1{
 						String: "string2",
@@ -420,7 +420,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded pointer types with nil values",
-			in: []interface{}{
+			in: []any{
 				TypeC{
 					Embedded1: nil,
 					String:    "string1",
@@ -433,7 +433,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded non struct tagged pointer types",
-			in: []interface{}{
+			in: []any{
 				TypeD{
 					Embedded3: &Embedded3{"key": "val"},
 					String:    "string1",
@@ -446,7 +446,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded non struct tagged pointer types with nil value - textmarshaler",
-			in: []interface{}{
+			in: []any{
 				TypeM{
 					TextMarshaler: nil,
 				},
@@ -458,7 +458,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded non struct tagged pointer types with nil value - csvmarshaler",
-			in: []interface{}{
+			in: []any{
 				TypeD{
 					Embedded3: nil,
 					String:    "string1",
@@ -471,7 +471,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "tagged fields priority",
-			in: []interface{}{
+			in: []any{
 				TagPriority{Foo: 1, Bar: 2},
 			},
 			out: [][]string{
@@ -481,7 +481,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "conflicting embedded fields #1",
-			in: []interface{}{
+			in: []any{
 				Embedded5{
 					Embedded6: Embedded6{X: 60},
 					Embedded7: Embedded7{X: 70},
@@ -500,7 +500,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "conflicting embedded fields #2",
-			in: []interface{}{
+			in: []any{
 				Embedded10{
 					Embedded11: Embedded11{
 						Embedded6: Embedded6{X: 60},
@@ -525,7 +525,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "double pointer",
-			in: []interface{}{
+			in: []any{
 				TypeE{
 					String: &PString,
 					Int:    &Int,
@@ -538,7 +538,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "nil double pointer",
-			in: []interface{}{
+			in: []any{
 				TypeE{},
 			},
 			out: [][]string{
@@ -548,7 +548,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "unexported non-struct embedded",
-			in: []interface{}{
+			in: []any{
 				struct {
 					A int
 					embeddedMap
@@ -561,7 +561,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "cyclic reference",
-			in: []interface{}{
+			in: []any{
 				A{
 					B: B{Y: 2, A: &A{}},
 					X: 1,
@@ -574,7 +574,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "ptr receiver csv marshaler",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					A PtrRecCSVMarshaler
 				}{},
@@ -602,7 +602,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "ptr receiver text marshaler",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					A PtrRecTextMarshaler
 				}{},
@@ -630,7 +630,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "text marshaler",
-			in: []interface{}{
+			in: []any{
 				struct {
 					A CSVMarshaler
 				}{},
@@ -653,7 +653,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "primitive type alias implementing Marshaler",
-			in: []interface{}{
+			in: []any{
 				EnumType{Enum: EnumFirst},
 				EnumType{Enum: EnumSecond},
 			},
@@ -665,7 +665,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "aliased type",
-			in: []interface{}{
+			in: []any{
 				struct{ Float float64 }{3.14},
 			},
 			out: [][]string{
@@ -675,7 +675,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded tagged marshalers",
-			in: []interface{}{
+			in: []any{
 				struct {
 					CSVMarshaler  `csv:"csv"`
 					TextMarshaler `csv:"text"`
@@ -688,7 +688,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded pointer tagged marshalers",
-			in: []interface{}{
+			in: []any{
 				struct {
 					*CSVMarshaler  `csv:"csv"`
 					*TextMarshaler `csv:"text"`
@@ -701,7 +701,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "inline fields",
-			in: []interface{}{
+			in: []any{
 				Inline{
 					J1: TypeJ{
 						String:     "j1",
@@ -726,7 +726,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "inline chain",
-			in: []interface{}{
+			in: []any{
 				Inline5{
 					A: Inline2{
 						S: "1",
@@ -755,7 +755,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "cyclic inline - no prefix",
-			in: []interface{}{
+			in: []any{
 				Inline6{
 					A: Inline7{
 						A: &Inline6{A: Inline7{
@@ -773,7 +773,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded with inline tag",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Inline7 `csv:"A,inline"`
 				}{
@@ -793,7 +793,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded with empty inline tag",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Inline7 `csv:",inline"`
 				}{
@@ -813,7 +813,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "embedded with ptr inline tag",
-			in: []interface{}{
+			in: []any{
 				struct {
 					*Inline7 `csv:"A,inline"`
 				}{
@@ -833,7 +833,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "inline visibility rules - top field first",
-			in: []interface{}{
+			in: []any{
 				struct {
 					AA string
 					F  Inline4 `csv:"A,inline"`
@@ -849,7 +849,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "inline visibility rules - top field last",
-			in: []interface{}{
+			in: []any{
 				Inline8{
 					F:  &Inline4{A: "10"},
 					AA: 1,
@@ -862,7 +862,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "ignore inline tag on non struct",
-			in: []interface{}{
+			in: []any{
 				struct {
 					X int `csv:",inline"`
 					Y int `csv:"y,inline"`
@@ -878,19 +878,19 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - non ptr elem",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Int    int
 					Pint   *int
-					Iface  interface{}
-					Piface *interface{}
+					Iface  any
+					Piface *any
 				}{
 					Pint:   pint(0),
 					Iface:  34,
 					Piface: pinterface(34),
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(int) ([]byte, error) { return []byte("int"), nil },
 			},
 			out: [][]string{
@@ -900,19 +900,19 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - ptr elem",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					Int    int
 					Pint   *int
-					Iface  interface{}
-					Piface *interface{}
+					Iface  any
+					Piface *any
 				}{
 					Pint:   pint(0),
 					Iface:  34,
 					Piface: pinterface(34),
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(int) ([]byte, error) { return []byte("int"), nil },
 			},
 			out: [][]string{
@@ -922,19 +922,19 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - ptr type - non ptr elem",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Int    int
 					Pint   *int
-					Iface  interface{}
-					Piface *interface{}
+					Iface  any
+					Piface *any
 				}{
 					Pint:   pint(0),
 					Iface:  34,
 					Piface: pinterface(pint(34)),
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(*int) ([]byte, error) { return []byte("int"), nil },
 			},
 			out: [][]string{
@@ -944,19 +944,19 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - ptr type - ptr elem",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					Int    int
 					Pint   *int
-					Iface  interface{}
-					Piface *interface{}
+					Iface  any
+					Piface *any
 				}{
 					Pint:   pint(0),
 					Iface:  34,
 					Piface: pinterface(pint(34)),
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(*int) ([]byte, error) { return []byte("int"), nil },
 			},
 			out: [][]string{
@@ -966,19 +966,19 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - mixed types - non ptr elem",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Int    int
 					Pint   *int
-					Iface  interface{}
-					Piface *interface{}
+					Iface  any
+					Piface *any
 				}{
 					Pint:   pint(0),
 					Iface:  34,
 					Piface: pinterface(pint(34)),
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(int) ([]byte, error) { return []byte("int"), nil },
 				func(*int) ([]byte, error) { return []byte("*int"), nil },
 			},
@@ -989,19 +989,19 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - mixed types - ptr elem",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					Int    int
 					Pint   *int
-					Iface  interface{}
-					Piface *interface{}
+					Iface  any
+					Piface *any
 				}{
 					Pint:   pint(0),
 					Iface:  34,
 					Piface: pinterface(pint(34)),
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(int) ([]byte, error) { return []byte("int"), nil },
 				func(*int) ([]byte, error) { return []byte("*int"), nil },
 			},
@@ -1012,7 +1012,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - interfaces",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					CSVMarshaler        Marshaler
 					Marshaler           CSVMarshaler
@@ -1026,7 +1026,7 @@ func TestEncoder(t *testing.T) {
 					PCSVTextMarshaler: &CSVTextMarshaler{},
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(Marshaler) ([]byte, error) { return []byte("registered.marshaler"), nil },
 				func(encoding.TextMarshaler) ([]byte, error) { return []byte("registered.textmarshaler"), nil },
 			},
@@ -1037,7 +1037,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - interface order",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					CSVTextMarshaler  CSVTextMarshaler
 					PCSVTextMarshaler *CSVTextMarshaler
@@ -1045,7 +1045,7 @@ func TestEncoder(t *testing.T) {
 					PCSVTextMarshaler: &CSVTextMarshaler{},
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(encoding.TextMarshaler) ([]byte, error) { return []byte("registered.textmarshaler"), nil },
 				func(Marshaler) ([]byte, error) { return []byte("registered.marshaler"), nil },
 			},
@@ -1056,7 +1056,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - method",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					PtrRecCSVMarshaler PtrRecCSVMarshaler
 				}{},
@@ -1064,7 +1064,7 @@ func TestEncoder(t *testing.T) {
 					PtrRecCSVMarshaler PtrRecCSVMarshaler
 				}{},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				(*PtrRecCSVMarshaler).CSV,
 			},
 			out: [][]string{
@@ -1075,12 +1075,12 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered func - fallback error",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Embedded14
 				}{},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				(*Embedded14).MarshalCSV,
 			},
 			err: &UnsupportedTypeError{
@@ -1089,36 +1089,36 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "registered interface func - returning error",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					Embedded14 Embedded14
 				}{},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(Marshaler) ([]byte, error) { return nil, Error },
 			},
 			err: Error,
 		},
 		{
 			desc: "registered func - returning error",
-			in: []interface{}{
+			in: []any{
 				&struct {
 					A InvalidType
 				}{},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(*InvalidType) ([]byte, error) { return nil, Error },
 			},
 			err: Error,
 		},
 		{
 			desc: "registered func - fallback error on interface",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Embedded14
 				}{},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				func(m Marshaler) ([]byte, error) { return nil, nil },
 			},
 			err: &UnsupportedTypeError{
@@ -1127,7 +1127,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "marshaler fallback error",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Embedded14
 				}{},
@@ -1141,7 +1141,7 @@ func TestEncoder(t *testing.T) {
 			// This doesnt mean the output csv is valid. Generally this is an invalid
 			// use. However, we need to make sure that the encoder is doing what it is
 			// asked to... correctly.
-			in: []interface{}{
+			in: []any{
 				struct {
 					A int
 				}{},
@@ -1164,70 +1164,70 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "encode interface values",
-			in: []interface{}{
+			in: []any{
 				struct {
-					V interface{}
+					V any
 				}{1},
 				struct {
-					V interface{}
+					V any
 				}{pint(10)},
 				struct {
-					V interface{}
+					V any
 				}{ppint(100)},
 				struct {
-					V interface{}
+					V any
 				}{pppint(1000)},
 				struct {
-					V *interface{}
+					V *any
 				}{pinterface(ppint(10000))},
 				struct {
-					V *interface{}
-				}{func() *interface{} {
-					var v interface{} = pppint(100000)
-					var vv interface{} = v
+					V *any
+				}{func() *any {
+					var v any = pppint(100000)
+					var vv any = v
 					return &vv
 				}()},
 				struct {
-					V interface{}
-				}{func() interface{} {
-					var v interface{} = &CSVMarshaler{}
-					var vv interface{} = v
+					V any
+				}{func() any {
+					var v any = &CSVMarshaler{}
+					var vv any = v
 					return &vv
 				}()},
 				struct {
-					V interface{}
-				}{func() interface{} {
-					var v interface{} = CSVMarshaler{}
-					var vv interface{} = v
+					V any
+				}{func() any {
+					var v any = CSVMarshaler{}
+					var vv any = v
 					return &vv
 				}()},
 				struct {
-					V interface{}
-				}{func() interface{} {
-					var v interface{} = &CSVMarshaler{}
-					var vv interface{} = v
+					V any
+				}{func() any {
+					var v any = &CSVMarshaler{}
+					var vv any = v
 					return vv
 				}()},
 				struct {
-					V interface{}
+					V any
 				}{
-					V: func() interface{} {
+					V: func() any {
 						return PtrRecCSVMarshaler(5)
 					}(),
 				},
 				struct {
-					V interface{}
+					V any
 				}{
-					V: func() interface{} {
+					V: func() any {
 						m := PtrRecCSVMarshaler(5)
 						return &m
 					}(),
 				},
 				struct {
-					V interface{}
-				}{func() interface{} {
-					var v interface{}
-					var vv interface{} = v
+					V any
+				}{func() any {
+					var v any
+					var vv any = v
 					return &vv
 				}()},
 			},
@@ -1249,7 +1249,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "encode NaN",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Float float64
 				}{math.NaN()},
@@ -1261,7 +1261,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "encode NaN with aliased type",
-			in: []interface{}{
+			in: []any{
 				struct {
 					Float Float
 				}{Float(math.NaN())},
@@ -1273,21 +1273,21 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "empty struct",
-			in: []interface{}{
+			in: []any{
 				struct{}{},
 			},
 			out: [][]string{{}, {}},
 		},
 		{
 			desc: "value wrapped in interfaces and pointers",
-			in: []interface{}{
-				func() (v interface{}) { v = &struct{ A int }{5}; return v }(),
+			in: []any{
+				func() (v any) { v = &struct{ A int }{5}; return v }(),
 			},
 			out: [][]string{{"A"}, {"5"}},
 		},
 		{
 			desc: "csv marshaler error",
-			in: []interface{}{
+			in: []any{
 				struct {
 					A CSVMarshaler
 				}{
@@ -1298,21 +1298,21 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "csv marshaler error as registered error",
-			in: []interface{}{
+			in: []any{
 				struct {
 					A CSVMarshaler
 				}{
 					A: CSVMarshaler{Err: Error},
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				CSVMarshaler.MarshalCSV,
 			},
 			err: Error,
 		},
 		{
 			desc: "text marshaler error",
-			in: []interface{}{
+			in: []any{
 				struct {
 					A TextMarshaler
 				}{
@@ -1323,7 +1323,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "text marshaler fallback error - ptr reciever",
-			in: []interface{}{
+			in: []any{
 				struct {
 					A Embedded15
 				}{},
@@ -1332,21 +1332,21 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "text marshaler error as registered func",
-			in: []interface{}{
+			in: []any{
 				struct {
 					A TextMarshaler
 				}{
 					A: TextMarshaler{Err: Error},
 				},
 			},
-			regFunc: []interface{}{
+			regFunc: []any{
 				TextMarshaler.MarshalText,
 			},
 			err: Error,
 		},
 		{
 			desc: "unsupported type",
-			in: []interface{}{
+			in: []any{
 				InvalidType{},
 			},
 			err: &UnsupportedTypeError{
@@ -1355,7 +1355,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "unsupported double pointer type",
-			in: []interface{}{
+			in: []any{
 				struct {
 					A **struct{}
 				}{},
@@ -1366,7 +1366,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "unsupported interface type",
-			in: []interface{}{
+			in: []any{
 				TypeF{V: TypeA{}},
 			},
 			err: &UnsupportedTypeError{
@@ -1375,26 +1375,26 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			desc: "encode not a struct",
-			in:   []interface{}{int(1)},
+			in:   []any{int(1)},
 			err: &InvalidEncodeError{
 				Type: reflect.TypeOf(int(1)),
 			},
 		},
 		{
 			desc: "encode nil interface",
-			in:   []interface{}{nilIface},
+			in:   []any{nilIface},
 			err: &InvalidEncodeError{
 				Type: reflect.TypeOf(nilIface),
 			},
 		},
 		{
 			desc: "encode nil ptr",
-			in:   []interface{}{nilPtr},
+			in:   []any{nilPtr},
 			err:  &InvalidEncodeError{},
 		},
 		{
 			desc: "encode nil interface pointer",
-			in:   []interface{}{nilIfacePtr},
+			in:   []any{nilIfacePtr},
 			err:  &InvalidEncodeError{},
 		},
 	}
@@ -1483,7 +1483,7 @@ func TestEncoder(t *testing.T) {
 		fixtures := []struct {
 			desc     string
 			expected string
-			v        interface{}
+			v        any
 		}{
 			{
 				desc:     "invalid encode error message",
@@ -1575,7 +1575,7 @@ func TestEncoder(t *testing.T) {
 
 		fixtures := []struct {
 			desc string
-			in   interface{}
+			in   any
 			tag  string
 			out  [][]string
 			err  error
@@ -1849,7 +1849,7 @@ func TestEncoder(t *testing.T) {
 	t.Run("slice and array", func(t *testing.T) {
 		fixtures := []struct {
 			desc string
-			in   interface{}
+			in   any
 			out  [][]string
 			err  error
 		}{
@@ -1993,17 +1993,17 @@ func TestEncoder(t *testing.T) {
 			},
 			{
 				desc: "disallow interface slice",
-				in: []interface{}{
+				in: []any{
 					TypeI{"1", 1},
 				},
-				err: &InvalidEncodeError{Type: reflect.TypeOf([]interface{}{})},
+				err: &InvalidEncodeError{Type: reflect.TypeOf([]any{})},
 			},
 			{
 				desc: "disallow interface array",
-				in: [1]interface{}{
+				in: [1]any{
 					TypeI{"1", 1},
 				},
-				err: &InvalidEncodeError{Type: reflect.TypeOf([1]interface{}{})},
+				err: &InvalidEncodeError{Type: reflect.TypeOf([1]any{})},
 			},
 		}
 
@@ -2189,7 +2189,7 @@ func TestEncoder(t *testing.T) {
 
 		fixtures := []struct {
 			desc string
-			arg  interface{}
+			arg  any
 		}{
 			{
 				desc: "not a func",
@@ -2201,7 +2201,7 @@ func TestEncoder(t *testing.T) {
 			},
 			{
 				desc: "T == empty interface",
-				arg:  func(interface{}) ([]byte, error) { return nil, nil },
+				arg:  func(any) ([]byte, error) { return nil, nil },
 			},
 			{
 				desc: "first out not bytes",
@@ -2223,7 +2223,7 @@ func TestEncoder(t *testing.T) {
 
 		for _, f := range fixtures {
 			t.Run(f.desc, func(t *testing.T) {
-				var e interface{}
+				var e any
 				func() {
 					defer func() {
 						e = recover()
@@ -2242,7 +2242,7 @@ func TestEncoder(t *testing.T) {
 			f := func(int) ([]byte, error) { return nil, nil }
 			enc.Register(f)
 
-			var e interface{}
+			var e any
 			func() {
 				defer func() {
 					e = recover()
@@ -2258,7 +2258,7 @@ func TestEncoder(t *testing.T) {
 	})
 }
 
-func encode(t *testing.T, buf *bytes.Buffer, v interface{}, tag string) {
+func encode(t *testing.T, buf *bytes.Buffer, v any, tag string) {
 	w := csv.NewWriter(buf)
 	enc := NewEncoder(w)
 	enc.Tag = tag

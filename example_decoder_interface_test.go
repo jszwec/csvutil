@@ -14,8 +14,8 @@ import (
 // that Type field is defined before Value. Decoder reads headers and values
 // in the same order as struct fields are defined.
 type Value struct {
-	Type  string      `csv:"type"`
-	Value interface{} `csv:"value"`
+	Type  string `csv:"type"`
+	Value any    `csv:"value"`
 }
 
 func ExampleDecoder_interfaceValues() {
@@ -35,7 +35,7 @@ int,10
 	// in the interface field. We can use Decoder.Map function to initialize
 	// interface with proper values depending on the input.
 	var value Value
-	dec.Map = func(field, column string, v interface{}) string {
+	dec.Map = func(field, column string, v any) string {
 		if column == "type" {
 			switch field {
 			case "int": // csv input tells us that this variable contains an int.
