@@ -44,28 +44,34 @@ func ExampleDecoder_Register() {
 		IntStruct IntStruct `csv:"int_struct"`
 	}
 
-	unmarshalInt := func(data []byte, n *int) error {
+	unmarshalInt := csvutil.UnmarshalFunc(func(data []byte, n *int) error {
 		v, err := strconv.ParseInt(string(data), 16, 64)
 		if err != nil {
 			return err
 		}
 		*n = int(v)
 		return nil
-	}
+	})
 
-	unmarshalTime := func(data []byte, t *time.Time) error {
+	unmarshalTime := csvutil.UnmarshalFunc(func(data []byte, t *time.Time) error {
 		tt, err := time.Parse(time.Kitchen, string(data))
 		if err != nil {
 			return err
 		}
 		*t = tt
 		return nil
-	}
+	})
 
-	unmarshalScanner := func(data []byte, s fmt.Scanner) error {
+	unmarshalScanner := csvutil.UnmarshalFunc(func(data []byte, s fmt.Scanner) error {
 		_, err := fmt.Sscan(string(data), s)
 		return err
-	}
+	})
+
+	unmarshalers := csvutil.NewUnmarshalers(
+		unmarshalInt,
+		unmarshalTime,
+		unmarshalScanner,
+	)
 
 	const data = `time,hex,ptr_hex,int_struct
 12:00PM,f,a,34`
@@ -76,9 +82,7 @@ func ExampleDecoder_Register() {
 		panic(err)
 	}
 
-	dec.Register(unmarshalInt)
-	dec.Register(unmarshalTime)
-	dec.Register(unmarshalScanner)
+	dec.WithUnmarshalers(unmarshalers)
 
 	var foos []Foo
 	if err := dec.Decode(&foos); err != nil {

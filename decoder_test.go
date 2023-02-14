@@ -264,7 +264,7 @@ type TypeL struct {
 	Int    int `csv:",omitempty"`
 }
 
-type Unmarshalers struct {
+type CustomUnmarshalers struct {
 	CSVUnmarshaler      CSVUnmarshaler      `csv:"csv"`
 	PCSVUnmarshaler     *CSVUnmarshaler     `csv:"pcsv"`
 	TextUnmarshaler     TextUnmarshaler     `csv:"text"`
@@ -382,8 +382,8 @@ func TestDecoder(t *testing.T) {
 	fixtures := []struct {
 		desc           string
 		in             string
-		regFuncs       []interface{}
-		out            interface{}
+		unmarshalers   unmarshalersSlice
+		out            func() interface{}
 		expected       interface{}
 		expectedRecord []string
 		inheader       []string
@@ -394,7 +394,7 @@ func TestDecoder(t *testing.T) {
 		{
 			desc: "embedded type - no tag - conflicting float tag",
 			in:   "string,int,float,bool\nstring,5,2.5,t",
-			out:  &TypeA{},
+			out:  func() any { return &TypeA{} },
 			expected: &TypeA{
 				Embedded1: Embedded1{},
 				Embedded2: Embedded2{Bool: true},
@@ -410,7 +410,7 @@ func TestDecoder(t *testing.T) {
 			in: `string,json
 string,"{""key"":""value""}"
 `,
-			out: &TypeB{},
+			out: func() any { return &TypeB{} },
 			expected: &TypeB{
 				Embedded3: Embedded3{"key": "value"},
 				String:    "string",
@@ -421,7 +421,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "embedded pointer type - no tag - type with conflicting tag",
 			in:   "string,float\nstring,2.5",
-			out:  &TypeC{},
+			out:  func() any { return &TypeC{} },
 			expected: &TypeC{
 				Embedded1: &Embedded1{Float: 2.5},
 				String:    "string",
@@ -434,7 +434,7 @@ string,"{""key"":""value""}"
 			in: `string,json
 string,"{""key"":""value""}"
 `,
-			out: &TypeD{},
+			out: func() any { return &TypeD{} },
 			expected: &TypeD{
 				Embedded3: &Embedded3{"key": "value"},
 				String:    "string",
@@ -445,7 +445,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "pointer types",
 			in:   "string,int\nstring,10",
-			out:  &TypeE{},
+			out:  func() any { return &TypeE{} },
 			expected: &TypeE{
 				String: &PString,
 				Int:    &Int,
@@ -460,7 +460,7 @@ string,"{""key"":""value""}"
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,true,true,true,1," +
 				EncodedBinary + "," + EncodedBinaryLarge,
-			out: &TypeF{},
+			out: func() any { return &TypeF{} },
 			expected: &TypeF{
 				Int:      1,
 				Pint:     pint(2),
@@ -535,7 +535,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "tags and unexported fields",
 			in:   "String,int,Float64,unexported1,unexported2\nstring,10,2.5,1,1",
-			out:  &TypeG{},
+			out:  func() any { return &TypeG{} },
 			expected: &TypeG{
 				String: "string",
 			},
@@ -546,7 +546,7 @@ string,"{""key"":""value""}"
 		{
 			desc:           "omitempty tag",
 			in:             "String,int\n,",
-			out:            &TypeI{},
+			out:            func() any { return &TypeI{} },
 			expected:       &TypeI{},
 			expectedRecord: []string{"", ""},
 			header:         []string{"String", "int"},
@@ -554,7 +554,7 @@ string,"{""key"":""value""}"
 		{
 			desc:           "empty struct",
 			in:             "String\n1",
-			out:            &struct{}{},
+			out:            func() any { return &struct{}{} },
 			expected:       &struct{}{},
 			expectedRecord: []string{"1"},
 			header:         []string{"String"},
@@ -563,14 +563,16 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode value receiver unmarshalers",
 			in:   "1,2,3\n1,2,3",
-			out: &struct {
-				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
-				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
-				Iface                  interface{}          `csv:"3"`
-			}{
-				ValueRecUnmarshaler{new(string)},
-				&ValueRecUnmarshaler{new(string)},
-				ValueRecUnmarshaler{new(string)},
+			out: func() any {
+				return &struct {
+					ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+					PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+					Iface                  interface{}          `csv:"3"`
+				}{
+					ValueRecUnmarshaler{new(string)},
+					&ValueRecUnmarshaler{new(string)},
+					ValueRecUnmarshaler{new(string)},
+				}
 			},
 			expected: &struct {
 				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
@@ -587,16 +589,18 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode value receiver registered func",
 			in:   "1,2,3,4\n1,2,3,4",
-			out: &struct {
-				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
-				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
-				Iface                  interface{}          `csv:"3"`
-				Iface2                 interface{}          `csv:"4"`
-			}{
-				ValueRecUnmarshaler{new(string)},
-				&ValueRecUnmarshaler{new(string)},
-				ValueRecUnmarshaler{new(string)},
-				&ValueRecUnmarshaler{new(string)},
+			out: func() any {
+				return &struct {
+					ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+					PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+					Iface                  interface{}          `csv:"3"`
+					Iface2                 interface{}          `csv:"4"`
+				}{
+					ValueRecUnmarshaler{new(string)},
+					&ValueRecUnmarshaler{new(string)},
+					ValueRecUnmarshaler{new(string)},
+					&ValueRecUnmarshaler{new(string)},
+				}
 			},
 			expected: &struct {
 				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
@@ -609,10 +613,10 @@ string,"{""key"":""value""}"
 				ValueRecUnmarshaler{pstring("scan: 3")},
 				&ValueRecUnmarshaler{pstring("scan: 4")},
 			},
-			regFuncs: []interface{}{
-				func(data []byte, v ValueRecUnmarshaler) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, v ValueRecUnmarshaler) error {
 					return v.Scan(data)
-				},
+				}),
 			},
 			expectedRecord: []string{"1", "2", "3", "4"},
 			header:         []string{"1", "2", "3", "4"},
@@ -620,16 +624,18 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode value receiver registered func - T is interface",
 			in:   "1,2,3,4\n1,2,3,4",
-			out: &struct {
-				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
-				PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
-				Iface                  interface{}          `csv:"3"`
-				Iface2                 interface{}          `csv:"4"`
-			}{
-				ValueRecUnmarshaler{new(string)},
-				&ValueRecUnmarshaler{new(string)},
-				ValueRecUnmarshaler{new(string)},
-				&ValueRecUnmarshaler{new(string)},
+			out: func() any {
+				return &struct {
+					ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
+					PtrValueRecUnmarshaler *ValueRecUnmarshaler `csv:"2"`
+					Iface                  interface{}          `csv:"3"`
+					Iface2                 interface{}          `csv:"4"`
+				}{
+					ValueRecUnmarshaler{new(string)},
+					&ValueRecUnmarshaler{new(string)},
+					ValueRecUnmarshaler{new(string)},
+					&ValueRecUnmarshaler{new(string)},
+				}
 			},
 			expected: &struct {
 				ValueRecUnmarshaler    ValueRecUnmarshaler  `csv:"1"`
@@ -642,10 +648,10 @@ string,"{""key"":""value""}"
 				ValueRecUnmarshaler{pstring("scan: 3")},
 				&ValueRecUnmarshaler{pstring("scan: 4")},
 			},
-			regFuncs: []interface{}{
-				func(data []byte, v interface{ Scan([]byte) error }) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, v interface{ Scan([]byte) error }) error {
 					return v.Scan(data)
-				},
+				}),
 			},
 			expectedRecord: []string{"1", "2", "3", "4"},
 			header:         []string{"1", "2", "3", "4"},
@@ -653,16 +659,18 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode value receiver textmarshaler",
 			in:   "1,2,3,4\n1,2,3,4",
-			out: &struct {
-				ValueRecTextUnmarshaler    ValueRecTextUnmarshaler  `csv:"1"`
-				PtrValueRecTextUnmarshaler *ValueRecTextUnmarshaler `csv:"2"`
-				Iface                      interface{}              `csv:"3"`
-				Iface2                     interface{}              `csv:"4"`
-			}{
-				ValueRecTextUnmarshaler{new(string)},
-				&ValueRecTextUnmarshaler{new(string)},
-				ValueRecTextUnmarshaler{new(string)},
-				&ValueRecTextUnmarshaler{new(string)},
+			out: func() any {
+				return &struct {
+					ValueRecTextUnmarshaler    ValueRecTextUnmarshaler  `csv:"1"`
+					PtrValueRecTextUnmarshaler *ValueRecTextUnmarshaler `csv:"2"`
+					Iface                      interface{}              `csv:"3"`
+					Iface2                     interface{}              `csv:"4"`
+				}{
+					ValueRecTextUnmarshaler{new(string)},
+					&ValueRecTextUnmarshaler{new(string)},
+					ValueRecTextUnmarshaler{new(string)},
+					&ValueRecTextUnmarshaler{new(string)},
+				}
 			},
 			expected: &struct {
 				ValueRecTextUnmarshaler    ValueRecTextUnmarshaler  `csv:"1"`
@@ -682,8 +690,8 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode unmarshalers",
 			in:   "csv,pcsv,text,ptext,csv-text,pcsv-text\nfield,field,field,field,field,field",
-			out:  &Unmarshalers{},
-			expected: &Unmarshalers{
+			out:  func() any { return &CustomUnmarshalers{} },
+			expected: &CustomUnmarshalers{
 				CSVUnmarshaler:      CSVUnmarshaler{"unmarshalCSV:field"},
 				PCSVUnmarshaler:     &CSVUnmarshaler{"unmarshalCSV:field"},
 				TextUnmarshaler:     TextUnmarshaler{"unmarshalText:field"},
@@ -697,7 +705,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode embedded tagged unmarshalers",
 			in:   "csv,text,csv-text\nfield,field,field",
-			out:  &EmbeddedUnmarshalers{},
+			out:  func() any { return &EmbeddedUnmarshalers{} },
 			expected: &EmbeddedUnmarshalers{
 				CSVUnmarshaler:     CSVUnmarshaler{"unmarshalCSV:field"},
 				TextUnmarshaler:    TextUnmarshaler{"unmarshalText:field"},
@@ -709,7 +717,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode pointer embedded tagged unmarshalers",
 			in:   "csv,text,csv-text\nfield,field,field",
-			out:  &EmbeddedPtrUnmarshalers{},
+			out:  func() any { return &EmbeddedPtrUnmarshalers{} },
 			expected: &EmbeddedPtrUnmarshalers{
 				CSVUnmarshaler:     &CSVUnmarshaler{"unmarshalCSV:field"},
 				TextUnmarshaler:    &TextUnmarshaler{"unmarshalText:field"},
@@ -721,7 +729,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "custom header",
 			in:   "string,10",
-			out:  &TypeI{},
+			out:  func() any { return &TypeI{} },
 			expected: &TypeI{
 				String: "string",
 				Int:    10,
@@ -733,7 +741,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "tag priority over field",
 			in:   "Foo\n1",
-			out:  &TagPriority{},
+			out:  func() any { return &TagPriority{} },
 			expected: &TagPriority{
 				Foo: 0,
 				Bar: 1,
@@ -744,7 +752,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode into unexported embedded field",
 			in:   "foo,bar\n1,1",
-			out:  &UnexportedEmbedded{},
+			out:  func() any { return &UnexportedEmbedded{} },
 			expected: &UnexportedEmbedded{
 				embedded{
 					Foo: 1,
@@ -758,7 +766,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "decode into ptr unexported embedded field",
 			in:   "foo,bar\n1,1",
-			out:  &UnexportedEmbeddedPtr{},
+			out:  func() any { return &UnexportedEmbeddedPtr{} },
 			expected: &UnexportedEmbeddedPtr{
 				&embedded{
 					Foo: 1,
@@ -774,7 +782,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "embedded field conflict #1",
 			in:   "X,Y\n1,2",
-			out:  &Embedded5{},
+			out:  func() any { return &Embedded5{} },
 			expected: &Embedded5{
 				Embedded8: Embedded8{
 					Embedded9: Embedded9{Y: 2},
@@ -787,7 +795,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "embedded field conflict #2",
 			in:   "X,Y\n1,2",
-			out:  &Embedded10{},
+			out:  func() any { return &Embedded10{} },
 			expected: &Embedded10{
 				Embedded13: Embedded13{
 					Embedded8: Embedded8{
@@ -802,7 +810,7 @@ string,"{""key"":""value""}"
 		{
 			desc:           "circular reference",
 			in:             "X,Y\n1,2",
-			out:            &A{},
+			out:            func() any { return &A{} },
 			expected:       &A{X: 1, B: B{Y: 2}},
 			expectedRecord: []string{"1", "2"},
 			header:         []string{"X", "Y"},
@@ -810,7 +818,7 @@ string,"{""key"":""value""}"
 		{
 			desc:           "primitive type alias with Unmarshaler",
 			in:             "enum\nfirst",
-			out:            &EnumType{},
+			out:            func() any { return &EnumType{} },
 			expected:       &EnumType{Enum: EnumFirst},
 			expectedRecord: []string{"first"},
 			header:         []string{"enum"},
@@ -818,7 +826,7 @@ string,"{""key"":""value""}"
 		{
 			desc:           "alias type",
 			in:             "Float\n3.14",
-			out:            &struct{ Float float64 }{},
+			out:            func() any { return &struct{ Float float64 }{} },
 			expected:       &struct{ Float float64 }{3.14},
 			expectedRecord: []string{"3.14"},
 			header:         []string{"Float"},
@@ -826,7 +834,7 @@ string,"{""key"":""value""}"
 		{
 			desc:           "empty base64 string",
 			in:             "Binary,foo\n,1\n",
-			out:            &struct{ Binary []byte }{},
+			out:            func() any { return &struct{ Binary []byte }{} },
 			expected:       &struct{ Binary []byte }{[]byte{}},
 			expectedRecord: []string{"", "1"},
 			header:         []string{"Binary", "foo"},
@@ -836,7 +844,7 @@ string,"{""key"":""value""}"
 			desc: "inline fields",
 			in: "int,Bool,Uint8,float,prefix-STR,prefix-int,prefix-Bool,prefix-Uint8,prefix-float,top-string,STR\n" +
 				"1,true,1,1,j2,2,true,2,2,top-level-str,STR",
-			out: &Inline{},
+			out: func() any { return &Inline{} },
 			expected: &Inline{
 				J1: TypeJ{
 					Int:        "1",
@@ -858,7 +866,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "inline chain",
 			in:   "AS,AAA,AA,S,A\n1,11,34,2,22",
-			out:  &Inline5{},
+			out:  func() any { return &Inline5{} },
 			expected: &Inline5{
 				A: Inline2{
 					S: "1",
@@ -880,7 +888,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "cyclic inline - no prefix",
 			in:   "X\n1",
-			out:  &Inline6{},
+			out:  func() any { return &Inline6{} },
 			expected: &Inline6{
 				A: Inline7{
 					A: nil,
@@ -893,7 +901,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "inline visibility rules",
 			in:   "AA\n1",
-			out:  &Inline8{},
+			out:  func() any { return &Inline8{} },
 			expected: &Inline8{
 				AA: 1,
 			},
@@ -903,13 +911,15 @@ string,"{""key"":""value""}"
 		{
 			desc: "initialized interface",
 			in:   "Int,Float,String,Bool,Unmarshaler,NilPtr\n10,3.14,string,true,lol,nil",
-			out: &struct{ Int, Float, String, Bool, Unmarshaler, NilPtr interface{} }{
-				Int:         int(0),
-				Float:       float64(0),
-				String:      "",
-				Bool:        false,
-				Unmarshaler: CSVUnmarshaler{},
-				NilPtr:      (*int)(nil),
+			out: func() any {
+				return &struct{ Int, Float, String, Bool, Unmarshaler, NilPtr interface{} }{
+					Int:         int(0),
+					Float:       float64(0),
+					String:      "",
+					Bool:        false,
+					Unmarshaler: CSVUnmarshaler{},
+					NilPtr:      (*int)(nil),
+				}
 			},
 			expected: &struct{ Int, Float, String, Bool, Unmarshaler, NilPtr interface{} }{
 				Int:         "10",
@@ -925,13 +935,15 @@ string,"{""key"":""value""}"
 		{
 			desc: "initialized ptr interface",
 			in:   "Int,Float,String,Bool,Unmarshaler,DoublePtr\n10,3.14,string,true,lol,100",
-			out: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr interface{} }{
-				Int:         pint(0),
-				Float:       pfloat64(0),
-				String:      pstring(""),
-				Bool:        pbool(false),
-				Unmarshaler: &CSVUnmarshaler{},
-				DoublePtr:   ppint(0),
+			out: func() any {
+				return &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr interface{} }{
+					Int:         pint(0),
+					Float:       pfloat64(0),
+					String:      pstring(""),
+					Bool:        pbool(false),
+					Unmarshaler: &CSVUnmarshaler{},
+					DoublePtr:   ppint(0),
+				}
 			},
 			expected: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr interface{} }{
 				Int:    pint(10),
@@ -949,12 +961,14 @@ string,"{""key"":""value""}"
 		{
 			desc: "initialized ptr interface fields",
 			in:   "Int,Float,String,Bool,Unmarshaler\n10,3.14,string,true,lol",
-			out: &struct{ Int, Float, String, Bool, Unmarshaler *interface{} }{
-				Int:         pinterface(int(0)),
-				Float:       pinterface(float64(0)),
-				String:      pinterface(""),
-				Bool:        pinterface(false),
-				Unmarshaler: pinterface(CSVUnmarshaler{}),
+			out: func() any {
+				return &struct{ Int, Float, String, Bool, Unmarshaler *interface{} }{
+					Int:         pinterface(int(0)),
+					Float:       pinterface(float64(0)),
+					String:      pinterface(""),
+					Bool:        pinterface(false),
+					Unmarshaler: pinterface(CSVUnmarshaler{}),
+				}
 			},
 			expected: &struct{ Int, Float, String, Bool, Unmarshaler *interface{} }{
 				Int:         pinterface("10"),
@@ -969,13 +983,15 @@ string,"{""key"":""value""}"
 		{
 			desc: "initialized ptr interface fields to ptr values",
 			in:   "Int,Float,String,Bool,Unmarshaler,DoublePtr\n10,3.14,string,true,lol,30",
-			out: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr *interface{} }{
-				Int:         pinterface(pint(0)),
-				Float:       pinterface(pfloat64(0)),
-				String:      pinterface(pstring("")),
-				Bool:        pinterface(pbool(false)),
-				Unmarshaler: pinterface(&CSVUnmarshaler{}),
-				DoublePtr:   pinterface(ppint(0)),
+			out: func() any {
+				return &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr *interface{} }{
+					Int:         pinterface(pint(0)),
+					Float:       pinterface(pfloat64(0)),
+					String:      pinterface(pstring("")),
+					Bool:        pinterface(pbool(false)),
+					Unmarshaler: pinterface(&CSVUnmarshaler{}),
+					DoublePtr:   pinterface(ppint(0)),
+				}
 			},
 			expected: &struct{ Int, Float, String, Bool, Unmarshaler, DoublePtr *interface{} }{
 				Int:    pinterface(pint(10)),
@@ -993,7 +1009,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "nil slice of structs",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &TypeISlice,
+			out:  func() any { return &TypeISlice },
 			expected: &[]TypeI{
 				{String: "first", Int: 1},
 				{String: "second", Int: 2},
@@ -1004,7 +1020,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "slice of structs",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[]TypeI{},
+			out:  func() any { return &[]TypeI{} },
 			expected: &[]TypeI{
 				{String: "first", Int: 1},
 				{String: "second", Int: 2},
@@ -1015,7 +1031,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "slice of structs - pre-allocated",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[]TypeI{0: {Int: 200}, 1024: {Int: 100}},
+			out:  func() any { return &[]TypeI{0: {Int: 200}, 1024: {Int: 100}} },
 			expected: &[]TypeI{
 				{String: "first", Int: 1},
 				{String: "second", Int: 2},
@@ -1026,7 +1042,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "slice of pointer structs",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[]*TypeI{},
+			out:  func() any { return &[]*TypeI{} },
 			expected: &[]*TypeI{
 				{String: "first", Int: 1},
 				{String: "second", Int: 2},
@@ -1037,7 +1053,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "slice of double pointer structs",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[]**TypeI{},
+			out:  func() any { return &[]**TypeI{} },
 			expected: &[]**TypeI{
 				ppTypeI(TypeI{String: "first", Int: 1}),
 				ppTypeI(TypeI{String: "second", Int: 2}),
@@ -1048,7 +1064,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "invalid slice of interfaces",
 			in:   "String,int\nfirst,1",
-			out:  &[]interface{}{},
+			out:  func() any { return &[]interface{}{} },
 			err: &InvalidDecodeError{
 				Type: reflect.TypeOf(&[]interface{}{}),
 			},
@@ -1056,7 +1072,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "invalid slice of ints",
 			in:   "String,int\nfirst,1",
-			out:  &[]int{},
+			out:  func() any { return &[]int{} },
 			err: &InvalidDecodeError{
 				Type: reflect.TypeOf(&[]int{}),
 			},
@@ -1064,7 +1080,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "invalid non pointer slice of ints",
 			in:   "String,int\nfirst,1",
-			out:  []int{},
+			out:  func() any { return []int{} },
 			err: &InvalidDecodeError{
 				Type: reflect.TypeOf([]int{}),
 			},
@@ -1072,7 +1088,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "array of structs",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[2]TypeI{},
+			out:  func() any { return &[2]TypeI{} },
 			expected: &[2]TypeI{
 				{String: "first", Int: 1},
 				{String: "second", Int: 2},
@@ -1083,7 +1099,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "array of pointer structs",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[2]*TypeI{},
+			out:  func() any { return &[2]*TypeI{} },
 			expected: &[2]*TypeI{
 				{String: "first", Int: 1},
 				{String: "second", Int: 2},
@@ -1094,7 +1110,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "array of double pointer structs",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[2]**TypeI{},
+			out:  func() any { return &[2]**TypeI{} },
 			expected: &[2]**TypeI{
 				ppTypeI(TypeI{String: "first", Int: 1}),
 				ppTypeI(TypeI{String: "second", Int: 2}),
@@ -1105,8 +1121,10 @@ string,"{""key"":""value""}"
 		{
 			desc: "array of structs - bigger than the data set",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out: &[4]TypeI{
-				3: {String: "I should be zeroed out", Int: 1024},
+			out: func() any {
+				return &[4]TypeI{
+					3: {String: "I should be zeroed out", Int: 1024},
+				}
 			},
 			expected: &[4]TypeI{
 				0: {String: "first", Int: 1},
@@ -1118,7 +1136,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "array of structs - smaller than the data set",
 			in:   "String,int\nfirst,1\nsecond,2",
-			out:  &[1]TypeI{},
+			out:  func() any { return &[1]TypeI{} },
 			expected: &[1]TypeI{
 				0: {String: "first", Int: 1},
 			},
@@ -1128,7 +1146,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "invalid array of interfaces",
 			in:   "String,int\nfirst,1",
-			out:  &[1]interface{}{},
+			out:  func() any { return &[1]interface{}{} },
 			err: &InvalidDecodeError{
 				Type: reflect.TypeOf(&[1]interface{}{}),
 			},
@@ -1136,7 +1154,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "invalid array of ints",
 			in:   "String,int\nfirst,1",
-			out:  &[1]int{},
+			out:  func() any { return &[1]int{} },
 			err: &InvalidDecodeError{
 				Type: reflect.TypeOf(&[1]int{}),
 			},
@@ -1144,7 +1162,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "invalid non pointer array of ints",
 			in:   "String,int\nfirst,1",
-			out:  [1]int{},
+			out:  func() any { return [1]int{} },
 			err: &InvalidDecodeError{
 				Type: reflect.TypeOf([1]int{}),
 			},
@@ -1152,7 +1170,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "unsupported type",
 			in:   "string,int\ns,1",
-			out:  &TypeWithInvalidField{},
+			out:  func() any { return &TypeWithInvalidField{} },
 			err: &UnsupportedTypeError{
 				Type: reflect.TypeOf(TypeI{}),
 			},
@@ -1160,9 +1178,11 @@ string,"{""key"":""value""}"
 		{
 			desc: "unsupported double ptr type",
 			in:   "A\n1",
-			out: &struct {
-				A **struct{}
-			}{},
+			out: func() any {
+				return &struct {
+					A **struct{}
+				}{}
+			},
 			err: &UnsupportedTypeError{
 				Type: reflect.TypeOf(struct{}{}),
 			},
@@ -1170,115 +1190,115 @@ string,"{""key"":""value""}"
 		{
 			desc: "invalid int",
 			in:   "Int,Foo\n,",
-			out:  &struct{ Int int }{},
+			out:  func() any { return &struct{ Int int }{} },
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(int(0))},
 		},
 		{
 			desc: "int overflow",
 			in:   "Int\n1024",
-			out:  &struct{ Int int8 }{},
+			out:  func() any { return &struct{ Int int8 }{} },
 			err:  &UnmarshalTypeError{Value: "1024", Type: reflect.TypeOf(int8(0))},
 		},
 		{
 			desc: "invalid int pointer",
 			in:   "Int,Foo\nbar,",
-			out:  &struct{ Int *int }{},
+			out:  func() any { return &struct{ Int *int }{} },
 			err:  &UnmarshalTypeError{Value: "bar", Type: reflect.TypeOf(int(0))},
 		},
 		{
 			desc: "invalid type pointer",
 			in:   "Int,Foo\n,",
-			out:  &struct{ Int *struct{} }{},
+			out:  func() any { return &struct{ Int *struct{} }{} },
 			err:  &UnsupportedTypeError{Type: reflect.TypeOf(struct{}{})},
 		},
 		{
 			desc: "invalid uint",
 			in:   "Uint,Foo\n,",
-			out:  &struct{ Uint uint }{},
+			out:  func() any { return &struct{ Uint uint }{} },
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(uint(0))},
 		},
 		{
 			desc: "uint overflow",
 			in:   "Uint\n1024",
-			out:  &struct{ Uint uint8 }{},
+			out:  func() any { return &struct{ Uint uint8 }{} },
 			err:  &UnmarshalTypeError{Value: "1024", Type: reflect.TypeOf(uint8(0))},
 		},
 		{
 			desc: "invalid uint pointer",
 			in:   "Uint\na",
-			out:  &struct{ Uint *uint }{},
+			out:  func() any { return &struct{ Uint *uint }{} },
 			err:  &UnmarshalTypeError{Value: "a", Type: reflect.TypeOf(uint(0))},
 		},
 		{
 			desc: "invalid float",
 			in:   "Float,Foo\n,",
-			out:  &struct{ Float float64 }{},
+			out:  func() any { return &struct{ Float float64 }{} },
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(float64(0))},
 		},
 		{
 			desc: "invalid float pointer",
 			in:   "Float\na",
-			out:  &struct{ Float *float64 }{},
+			out:  func() any { return &struct{ Float *float64 }{} },
 			err:  &UnmarshalTypeError{Value: "a", Type: reflect.TypeOf(float64(0))},
 		},
 		{
 			desc: "invalid bool",
 			in:   "Bool,Foo\n,",
-			out:  &struct{ Bool bool }{},
+			out:  func() any { return &struct{ Bool bool }{} },
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(bool(false))},
 		},
 		{
 			desc: "invalid interface",
 			in:   "Interface,Foo\n,",
-			out:  &struct{ Interface Unmarshaler }{},
+			out:  func() any { return &struct{ Interface Unmarshaler }{} },
 			err:  &UnmarshalTypeError{Value: "", Type: csvUnmarshaler},
 		},
 		{
 			desc: "invalid interface pointer",
 			in:   "Interface,Foo\nbar,",
-			out:  &struct{ Interface *Unmarshaler }{},
+			out:  func() any { return &struct{ Interface *Unmarshaler }{} },
 			err:  &UnmarshalTypeError{Value: "bar", Type: csvUnmarshaler},
 		},
 		{
 			desc: "invalid field in embedded type",
 			in:   "String,int\n1,1",
-			out:  &struct{ InvalidType }{},
+			out:  func() any { return &struct{ InvalidType }{} },
 			err:  &UnsupportedTypeError{Type: reflect.TypeOf(struct{}{})},
 		},
 		{
 			desc: "not a struct in decode",
 			in:   "string,int\n1,1",
-			out:  &Int,
+			out:  func() any { return &Int },
 			err:  &InvalidDecodeError{Type: reflect.TypeOf(&Int)},
 		},
 		{
 			desc: "not a struct in decode - non ptr",
 			in:   "string,int\n1,1",
-			out:  Int,
+			out:  func() any { return Int },
 			err:  &InvalidDecodeError{Type: reflect.TypeOf(Int)},
 		},
 		{
 			desc: "invalid base64 string",
 			in:   "Binary\n1",
-			out:  &struct{ Binary []byte }{},
+			out:  func() any { return &struct{ Binary []byte }{} },
 			err:  base64.CorruptInputError(0),
 		},
 		{
 			desc: "invalid int under interface value",
 			in:   "Int,Foo\n,",
-			out:  &struct{ Int interface{} }{Int: pint(0)},
+			out:  func() any { return &struct{ Int interface{} }{Int: pint(0)} },
 			err:  &UnmarshalTypeError{Value: "", Type: reflect.TypeOf(int(0))},
 		},
 		{
 			desc: "unsupported type under interface value",
 			in:   "Invalid\n1",
-			out:  &struct{ Invalid interface{} }{Invalid: &InvalidType{}},
+			out:  func() any { return &struct{ Invalid interface{} }{Invalid: &InvalidType{}} },
 			err:  &UnsupportedTypeError{Type: reflect.TypeOf(InvalidType{})},
 		},
 		{
 			desc: "no panic on embedded pointer fields with blank value",
 			in:   "X,Y\n,",
-			out:  &Embedded17{},
+			out:  func() any { return &Embedded17{} },
 			expected: &Embedded17{
 				Embedded18: &Embedded18{},
 			},
@@ -1288,11 +1308,13 @@ string,"{""key"":""value""}"
 		{
 			desc: "set blank values to nil on pointers",
 			in:   "X,Y\n1,",
-			out: &Embedded17{
-				Embedded18: &Embedded18{
-					X: pfloat64(10),
-					Y: pfloat64(20),
-				},
+			out: func() any {
+				return &Embedded17{
+					Embedded18: &Embedded18{
+						X: pfloat64(10),
+						Y: pfloat64(20),
+					},
+				}
 			},
 			expected: &Embedded17{
 				Embedded18: &Embedded18{
@@ -1306,7 +1328,7 @@ string,"{""key"":""value""}"
 		{
 			desc: "no panic on embedded pointer fields with blank value 2",
 			in:   "X,Y\n1,",
-			out:  &Embedded17{},
+			out:  func() any { return &Embedded17{} },
 			expected: &Embedded17{
 				Embedded18: &Embedded18{X: pfloat64(1)},
 			},
@@ -1316,13 +1338,13 @@ string,"{""key"":""value""}"
 		{
 			desc: "fails on blank non float string with ptr embedded",
 			in:   "string,float\n,",
-			out:  &TypeC{},
+			out:  func() any { return &TypeC{} },
 			err:  &UnmarshalTypeError{Type: reflect.TypeOf(float64(0)), Value: ""},
 		},
 		{
 			desc: "blank values on embedded pointers",
 			in:   "String,Int\n,",
-			out:  &TypeK{},
+			out:  func() any { return &TypeK{} },
 			expected: &TypeK{
 				&TypeL{String: "", Int: 0},
 			},
@@ -1336,8 +1358,10 @@ string,"{""key"":""value""}"
 				"pfloat32,float64,pfloat64,string,pstring,bool,pbool,interface,pinterface,binary,pbinary\n" +
 				"1,,3,,5,,7,,9,,11,,13,,15,,17,,19,,21,,23,,25,,true,,true,," +
 				EncodedBinary + "," + "",
-			out: &TypeF{
-				Pint: pint(10),
+			out: func() any {
+				return &TypeF{
+					Pint: pint(10),
+				}
 			},
 			expected: &TypeF{
 				Int:      1,
@@ -1413,12 +1437,14 @@ string,"{""key"":""value""}"
 		{
 			desc: "registered func",
 			in:   "Int,Pint,Iface,Piface\na,b,c,d",
-			out: &struct {
-				Int    int
-				Pint   *int
-				Iface  interface{}
-				Piface *interface{}
-			}{Iface: pint(10), Piface: pinterface(pint(10))},
+			out: func() any {
+				return &struct {
+					Int    int
+					Pint   *int
+					Iface  interface{}
+					Piface *interface{}
+				}{Iface: pint(10), Piface: pinterface(pint(10))}
+			},
 			expected: &struct {
 				Int    int
 				Pint   *int
@@ -1430,15 +1456,15 @@ string,"{""key"":""value""}"
 				Iface:  pint(12),
 				Piface: pinterface(pint(13)),
 			},
-			regFuncs: []interface{}{
-				func(data []byte, n *int) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, n *int) error {
 					x, err := strconv.ParseInt(string(data), 16, 64)
 					if err != nil {
 						return err
 					}
 					*n = int(x)
 					return nil
-				},
+				}),
 			},
 			expectedRecord: []string{"a", "b", "c", "d"},
 			header:         []string{"Int", "Pint", "Iface", "Piface"},
@@ -1446,10 +1472,12 @@ string,"{""key"":""value""}"
 		{
 			desc: "registered func - initialized interface ptr",
 			in:   "Iface,Piface\na,b",
-			out: &struct {
-				Iface  interface{}
-				Piface *interface{}
-			}{Iface: 10, Piface: pinterface(10)},
+			out: func() any {
+				return &struct {
+					Iface  interface{}
+					Piface *interface{}
+				}{Iface: 10, Piface: pinterface(10)}
+			},
 			expected: &struct {
 				Iface  interface{}
 				Piface *interface{}
@@ -1457,15 +1485,15 @@ string,"{""key"":""value""}"
 				Iface:  "a",
 				Piface: pinterface("b"),
 			},
-			regFuncs: []interface{}{
-				func(data []byte, n *int) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, n *int) error {
 					x, err := strconv.ParseInt(string(data), 16, 64)
 					if err != nil {
 						return err
 					}
 					*n = int(x)
 					return nil
-				},
+				}),
 			},
 			expectedRecord: []string{"a", "b"},
 			header:         []string{"Iface", "Piface"},
@@ -1473,18 +1501,20 @@ string,"{""key"":""value""}"
 		{
 			desc: "registered func - interfaces",
 			in:   "Int,Pint,Iface,Piface,Scanner,PScanner\n10,20,30,40,50,60",
-			out: &struct {
-				Int      IntStruct
-				Pint     *IntStruct
-				Iface    interface{}
-				Piface   *interface{}
-				Scanner  fmt.Scanner
-				PScanner *fmt.Scanner
-			}{
-				Iface:    &IntStruct{},
-				Piface:   pinterface(&IntStruct{}),
-				Scanner:  &IntStruct{},
-				PScanner: &[]fmt.Scanner{&IntStruct{}}[0],
+			out: func() any {
+				return &struct {
+					Int      IntStruct
+					Pint     *IntStruct
+					Iface    interface{}
+					Piface   *interface{}
+					Scanner  fmt.Scanner
+					PScanner *fmt.Scanner
+				}{
+					Iface:    &IntStruct{},
+					Piface:   pinterface(&IntStruct{}),
+					Scanner:  &IntStruct{},
+					PScanner: &[]fmt.Scanner{&IntStruct{}}[0],
+				}
 			},
 			expected: &struct {
 				Int      IntStruct
@@ -1501,11 +1531,11 @@ string,"{""key"":""value""}"
 				Scanner:  &IntStruct{Value: 50},
 				PScanner: &[]fmt.Scanner{&IntStruct{Value: 60}}[0],
 			},
-			regFuncs: []interface{}{
-				func(data []byte, scanner fmt.Scanner) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, scanner fmt.Scanner) error {
 					_, err := fmt.Sscan(string(data), scanner)
 					return err
-				},
+				}),
 			},
 			expectedRecord: []string{"10", "20", "30", "40", "50", "60"},
 			header:         []string{"Int", "Pint", "Iface", "Piface", "Scanner", "PScanner"},
@@ -1513,37 +1543,37 @@ string,"{""key"":""value""}"
 		{
 			desc: "registered func - invalid interface",
 			in:   "Foo\n1",
-			regFuncs: []interface{}{
-				func(data []byte, scanner fmt.Scanner) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, scanner fmt.Scanner) error {
 					_, err := fmt.Sscan(string(data), scanner)
 					return err
-				},
+				}),
 			},
-			out: &struct{ Foo fmt.Scanner }{},
+			out: func() any { return &struct{ Foo fmt.Scanner }{} },
 			err: &UnmarshalTypeError{Value: "1", Type: reflect.TypeOf((*fmt.Scanner)(nil)).Elem()},
 		},
 		{
 			desc: "registered func - invalid *interface",
 			in:   "Foo\n1",
-			regFuncs: []interface{}{
-				func(data []byte, scanner fmt.Scanner) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, scanner fmt.Scanner) error {
 					_, err := fmt.Sscan(string(data), scanner)
 					return err
-				},
+				}),
 			},
-			out: &struct{ Foo *fmt.Scanner }{},
+			out: func() any { return &struct{ Foo *fmt.Scanner }{} },
 			err: &UnmarshalTypeError{Value: "1", Type: reflect.TypeOf((*fmt.Scanner)(nil)).Elem()},
 		},
 		{
 			desc: "registered func - non ptr interface",
 			in:   "Foo\n1",
-			regFuncs: []interface{}{
-				func(data []byte, scanner fmt.Scanner) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, scanner fmt.Scanner) error {
 					_, err := fmt.Sscan(string(data), scanner)
 					return err
-				},
+				}),
 			},
-			out:            &struct{ Foo interface{} }{Foo: (fmt.Scanner)(nil)},
+			out:            func() any { return &struct{ Foo interface{} }{Foo: (fmt.Scanner)(nil)} },
 			expected:       &struct{ Foo interface{} }{Foo: "1"},
 			expectedRecord: []string{"1"},
 			header:         []string{"Foo"},
@@ -1551,13 +1581,13 @@ string,"{""key"":""value""}"
 		{
 			desc: "registered func - ptr interface",
 			in:   "Foo\n1",
-			regFuncs: []interface{}{
-				func(data []byte, scanner fmt.Scanner) error {
+			unmarshalers: unmarshalersSlice{
+				unmarshalFunc(func(data []byte, scanner fmt.Scanner) error {
 					_, err := fmt.Sscan(string(data), scanner)
 					return err
-				},
+				}),
 			},
-			out:            &struct{ Foo interface{} }{Foo: (*fmt.Scanner)(nil)},
+			out:            func() any { return &struct{ Foo interface{} }{Foo: (*fmt.Scanner)(nil)} },
 			expected:       &struct{ Foo interface{} }{Foo: "1"},
 			expectedRecord: []string{"1"},
 			header:         []string{"Foo"},
@@ -1565,17 +1595,18 @@ string,"{""key"":""value""}"
 	}
 
 	for _, f := range fixtures {
-		t.Run(f.desc, func(t *testing.T) {
-			r, err := NewDecoder(newCSVReader(strings.NewReader(f.in)), f.inheader...)
+		f := f
+		do := func(t *testing.T, register func(d *Decoder)) {
+			dec, err := NewDecoder(newCSVReader(strings.NewReader(f.in)), f.inheader...)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			for _, fn := range f.regFuncs {
-				r.Register(fn)
-			}
+			register(dec)
 
-			err = r.Decode(&f.out)
+			dst := f.out()
+
+			err = dec.Decode(&dst)
 			if f.err != nil {
 				if !checkErr(f.err, err) {
 					t.Errorf("want err=%v; got %v", f.err, err)
@@ -1587,21 +1618,43 @@ string,"{""key"":""value""}"
 				t.Errorf("want err=nil; got %v", err)
 			}
 
-			if !reflect.DeepEqual(r.Record(), f.expectedRecord) {
-				t.Errorf("want rec=%q; got %q", f.expectedRecord, r.Record())
+			if !reflect.DeepEqual(dec.Record(), f.expectedRecord) {
+				t.Errorf("want rec=%q; got %q", f.expectedRecord, dec.Record())
 			}
 
-			if !reflect.DeepEqual(f.out, f.expected) {
-				t.Errorf("want %#v; got %#v", f.expected, f.out)
+			if !reflect.DeepEqual(dst, f.expected) {
+				t.Errorf("want %#v; got %#v", f.expected, dst)
 			}
 
-			if !reflect.DeepEqual(r.Unused(), f.unused) {
-				t.Errorf("want unused=%v; got %v", f.unused, r.Unused())
+			if !reflect.DeepEqual(dec.Unused(), f.unused) {
+				t.Errorf("want unused=%v; got %v", f.unused, dec.Unused())
 			}
 
-			if !reflect.DeepEqual(r.Header(), f.header) {
-				t.Errorf("want header=%v; got %v", f.header, r.Header())
+			if !reflect.DeepEqual(dec.Header(), f.header) {
+				t.Errorf("want header=%v; got %v", f.header, dec.Header())
 			}
+		}
+
+		if len(f.unmarshalers) > 0 {
+			t.Run(f.desc+" old register", func(t *testing.T) {
+				do(t, func(d *Decoder) {
+					for _, u := range f.unmarshalers {
+						d.Register(u.RawFunc.Interface())
+					}
+				})
+			})
+
+			t.Run(f.desc+" new register", func(t *testing.T) {
+				do(t, func(d *Decoder) {
+					d.WithUnmarshalers(NewUnmarshalers(f.unmarshalers.Unmarshalers()...))
+				})
+			})
+
+			continue
+		}
+
+		t.Run(f.desc, func(t *testing.T) {
+			do(t, func(*Decoder) {})
 		})
 	}
 
@@ -1958,12 +2011,12 @@ s,1,3.14,true
 			}
 			dec.Map = m
 
-			var out Unmarshalers
+			var out CustomUnmarshalers
 			if err := dec.Decode(&out); err != nil {
 				t.Errorf("want err=nil; got %v", err)
 			}
 
-			expected := Unmarshalers{
+			expected := CustomUnmarshalers{
 				CSVUnmarshaler:   CSVUnmarshaler{String: "unmarshalCSV:csv_unmarshaler"},
 				PCSVUnmarshaler:  nil,
 				TextUnmarshaler:  TextUnmarshaler{String: "unmarshalText:text_unmarshaler"},
@@ -2538,6 +2591,59 @@ func BenchmarkDecode(b *testing.B) {
 			}
 		}
 	})
+
+	b.Run("registered type decode", func(b *testing.B) {
+		type Foo struct {
+			A int `csv:"a"`
+		}
+
+		header, err := Header(Foo{}, "csv")
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		r := staticReader{
+			record: []string{"100"},
+		}
+
+		b.Run("old register", func(b *testing.B) {
+			r, err := NewDecoder(r, header...)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			r.Register(func(data []byte, dst *int) error {
+				*dst = 100
+				return nil
+			})
+
+			for i := 0; i < b.N; i++ {
+				var a Foo
+				if err := r.Decode(&a); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+
+		b.Run("new register", func(b *testing.B) {
+			r, err := NewDecoder(r, header...)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			r.WithUnmarshalers(UnmarshalFunc(func(data []byte, dst *int) error {
+				*dst = 100
+				return nil
+			}))
+
+			for i := 0; i < b.N; i++ {
+				var a Foo
+				if err := r.Decode(&a); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	})
 }
 
 type reader struct {
@@ -2555,4 +2661,33 @@ func (r *reader) Read() ([]string, error) {
 	}
 	r.i++
 	return r.records[r.i-1], nil
+}
+
+type staticReader struct {
+	record []string
+}
+
+func (r staticReader) Read() ([]string, error) {
+	return r.record, nil
+}
+
+type unmarshalers struct {
+	*Unmarshalers
+	RawFunc reflect.Value
+}
+
+func unmarshalFunc[T any](f func([]byte, T) error) unmarshalers {
+	return unmarshalers{
+		Unmarshalers: UnmarshalFunc(f),
+		RawFunc:      reflect.ValueOf(f),
+	}
+}
+
+type unmarshalersSlice []unmarshalers
+
+func (us unmarshalersSlice) Unmarshalers() (out []*Unmarshalers) {
+	for i := range us {
+		out = append(out, us[i].Unmarshalers)
+	}
+	return out
 }
