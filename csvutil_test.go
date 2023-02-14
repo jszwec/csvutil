@@ -1,6 +1,7 @@
 package csvutil
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -879,52 +880,8 @@ func checkErr(expected, err error) bool {
 	}
 
 	eVal := reflect.New(reflect.TypeOf(expected))
-	if !asError(err, eVal.Interface()) {
+	if !errors.As(err, eVal.Interface()) {
 		return false
 	}
 	return reflect.DeepEqual(eVal.Elem().Interface(), expected)
-}
-
-// asError is a copy of errors.As to support older Go versions.
-//
-// This copy exists because we want to avoid dependencies like:
-// "golang.org/x/xerrors"
-func asError(err error, target any) bool {
-	if target == nil {
-		panic("errors: target cannot be nil")
-	}
-	val := reflect.ValueOf(target)
-	typ := val.Type()
-	if typ.Kind() != reflect.Ptr || val.IsNil() {
-		panic("errors: target must be a non-nil pointer")
-	}
-	targetType := typ.Elem()
-	if targetType.Kind() != reflect.Interface && !targetType.Implements(errorType) {
-		panic("errors: *target must be interface or implement error")
-	}
-	for err != nil {
-		if reflect.TypeOf(err).AssignableTo(targetType) {
-			val.Elem().Set(reflect.ValueOf(err))
-			return true
-		}
-		if x, ok := err.(interface{ As(any) bool }); ok && x.As(target) {
-			return true
-		}
-		err = unwrap(err)
-	}
-	return false
-}
-
-var errorType = reflect.TypeOf((*error)(nil)).Elem()
-
-// unwrap is a copy of errors.Unwrap for older Go versions and to avoid
-// dependencies.
-func unwrap(err error) error {
-	u, ok := err.(interface {
-		Unwrap() error
-	})
-	if !ok {
-		return nil
-	}
-	return u.Unwrap()
 }
