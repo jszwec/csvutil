@@ -205,6 +205,10 @@ func (enc *Encoder) SetHeader(header []string) {
 	enc.header = cp
 }
 
+// WithMarshalers sets the provided Marshalers for the encoder.
+//
+// WithMarshalers are based on the encoding/json proposal:
+// https://github.com/golang/go/issues/5901.
 func (enc *Encoder) WithMarshalers(m *Marshalers) {
 	enc.funcMap = m.funcMap
 	enc.ifaceFuncs = m.ifaceFuncs
@@ -420,6 +424,9 @@ func (e *Encoder) cache(typ reflect.Type) ([]encField, []byte, []int, []string, 
 }
 
 // Marshalers stores custom unmarshal functions. Marshalers are immutable.
+//
+// Marshalers are based on the encoding/json proposal:
+// https://github.com/golang/go/issues/5901.
 type Marshalers struct {
 	funcMap    map[reflect.Type]marshalFunc
 	ifaceFuncs []marshalFunc

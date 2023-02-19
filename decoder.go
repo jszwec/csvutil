@@ -321,6 +321,9 @@ func (d *Decoder) Register(f any) {
 }
 
 // WithUnmarshalers sets the provided Unmarshalers for the decoder.
+//
+// WithUnmarshalers is based on the encoding/json proposal:
+// https://github.com/golang/go/issues/5901.
 func (d *Decoder) WithUnmarshalers(u *Unmarshalers) {
 	d.funcMap = u.funcMap
 	d.ifaceFuncs = u.ifaceFuncs
@@ -580,6 +583,9 @@ func indirect(v reflect.Value) reflect.Value {
 }
 
 // Unmarshalers stores custom unmarshal functions. Unmarshalers is immutable.
+//
+// Unmarshalers are based on the encoding/json proposal:
+// https://github.com/golang/go/issues/5901.
 type Unmarshalers struct {
 	funcMap    map[reflect.Type]func([]byte, any) error
 	ifaceFuncs []ifaceDecodeFunc
