@@ -19,7 +19,7 @@ type encCache struct {
 	record []string
 }
 
-func newEncCache(k typeKey, funcMap map[reflect.Type]reflect.Value, funcs []reflect.Value, header []string) (_ *encCache, err error) {
+func newEncCache(k typeKey, funcMap map[reflect.Type]marshalFunc, funcs []marshalFunc, header []string) (_ *encCache, err error) {
 	fields := cachedFields(k)
 	encFields := make([]encField, 0, len(fields))
 
@@ -103,8 +103,8 @@ type Encoder struct {
 	header     []string
 	noHeader   bool
 	typeKey    typeKey
-	funcMap    map[reflect.Type]reflect.Value
-	ifaceFuncs []reflect.Value
+	funcMap    map[reflect.Type]marshalFunc
+	ifaceFuncs []marshalFunc
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -135,9 +135,14 @@ func NewEncoder(w Writer) *Encoder {
 //
 // Register is based on the encoding/json proposal:
 // https://github.com/golang/go/issues/5901.
+//
+// Deprecated: use MarshalFunc function with type parameter instead. The benefits
+// are type safety and much better performance.
 func (e *Encoder) Register(f any) {
-	v := reflect.ValueOf(f)
-	typ := v.Type()
+	var (
+		fn  = reflect.ValueOf(f)
+		typ = fn.Type()
+	)
 
 	if typ.Kind() != reflect.Func ||
 		typ.NumIn() != 1 || typ.NumOut() != 2 ||
@@ -145,24 +150,43 @@ func (e *Encoder) Register(f any) {
 		panic("csvutil: func must be of type func(T) ([]byte, error)")
 	}
 
-	argType := typ.In(0)
+	var (
+		argType = typ.In(0)
 
-	if argType.Kind() == reflect.Interface && argType.NumMethod() == 0 {
+		isIface = argType.Kind() == reflect.Interface
+		isPtr   = argType.Kind() == reflect.Pointer
+	)
+
+	if isIface && argType.NumMethod() == 0 {
 		panic("csvutil: func argument type must not be an empty interface")
 	}
 
+	wrappedFn := marshalFunc{
+		f: func(val any) ([]byte, error) {
+			v := reflect.ValueOf(val)
+			if !v.IsValid() && (isIface || isPtr) {
+				v = reflect.Zero(argType)
+			}
+
+			out := fn.Call([]reflect.Value{v})
+			err, _ := out[1].Interface().(error)
+			return out[0].Bytes(), err
+		},
+		argType: typ.In(0),
+	}
+
 	if e.funcMap == nil {
-		e.funcMap = make(map[reflect.Type]reflect.Value)
+		e.funcMap = make(map[reflect.Type]marshalFunc)
 	}
 
 	if _, ok := e.funcMap[argType]; ok {
 		panic("csvutil: func " + typ.String() + " already registered")
 	}
 
-	e.funcMap[argType] = v
+	e.funcMap[argType] = wrappedFn
 
-	if argType.Kind() == reflect.Interface {
-		e.ifaceFuncs = append(e.ifaceFuncs, v)
+	if isIface {
+		e.ifaceFuncs = append(e.ifaceFuncs, wrappedFn)
 	}
 }
 
@@ -179,6 +203,11 @@ func (enc *Encoder) SetHeader(header []string) {
 	cp := make([]string, len(header))
 	copy(cp, header)
 	enc.header = cp
+}
+
+func (enc *Encoder) WithMarshalers(m *Marshalers) {
+	enc.funcMap = m.funcMap
+	enc.ifaceFuncs = m.ifaceFuncs
 }
 
 // Encode writes the CSV encoding of v to the output stream. The provided
@@ -390,6 +419,87 @@ func (e *Encoder) cache(typ reflect.Type) ([]encField, []byte, []int, []string, 
 	return e.c.fields, e.c.buf[:0], e.c.index, e.c.record, nil
 }
 
+// Marshalers stores custom unmarshal functions. Marshalers are immutable.
+type Marshalers struct {
+	funcMap    map[reflect.Type]marshalFunc
+	ifaceFuncs []marshalFunc
+}
+
+// NewMarshalers merges the provided Marshalers into one and returns it.
+// If Marshalers contain duplicate function signatures, the one that was
+// provided first wins.
+func NewMarshalers(ms ...*Marshalers) *Marshalers {
+	out := &Marshalers{
+		funcMap: make(map[reflect.Type]marshalFunc),
+	}
+
+	for _, u := range ms {
+		for k, v := range u.funcMap {
+			if _, ok := out.funcMap[k]; ok {
+				continue
+			}
+			out.funcMap[k] = v
+		}
+		out.ifaceFuncs = append(out.ifaceFuncs, u.ifaceFuncs...)
+	}
+
+	return out
+}
+
+// MarshalFunc stores the provided function in Marshalers and returns it.
+//
+// T must be a concrete type such as Foo or *Foo, or interface that has at
+// least one method.
+//
+// During encoding, fields are matched by the concrete type first. If match is not
+// found then Encoder looks if field implements any of the registered interfaces
+// in order they were registered.
+//
+// UnmarshalFunc panics if T is an empty interface.
+func MarshalFunc[T any](f func(T) ([]byte, error)) *Marshalers {
+	var (
+		v       = reflect.ValueOf(f)
+		typ     = v.Type()
+		argType = typ.In(0)
+		isIface = argType.Kind() == reflect.Interface
+	)
+
+	if isIface && argType.NumMethod() == 0 {
+		panic("csvutil: func argument type must not be an empty interface")
+	}
+
+	var zero T
+	wrappedFn := marshalFunc{
+		f: func(v any) ([]byte, error) {
+			if !isIface {
+				return f(v.(T))
+			}
+
+			if v == nil {
+				return f(zero)
+			}
+			return f(v.(T))
+		},
+		argType: typ.In(0),
+	}
+
+	funcMap := map[reflect.Type]marshalFunc{
+		argType: wrappedFn,
+	}
+
+	var ifaceFuncs []marshalFunc
+	if isIface {
+		ifaceFuncs = []marshalFunc{
+			wrappedFn,
+		}
+	}
+
+	return &Marshalers{
+		funcMap:    funcMap,
+		ifaceFuncs: ifaceFuncs,
+	}
+}
+
 func walkIndex(v reflect.Value, index []int) reflect.Value {
 	for _, i := range index {
 		v = walkPtr(v)
@@ -424,4 +534,9 @@ func walkType(typ reflect.Type) reflect.Type {
 		typ = typ.Elem()
 	}
 	return typ
+}
+
+type marshalFunc struct {
+	f       func(any) ([]byte, error)
+	argType reflect.Type
 }

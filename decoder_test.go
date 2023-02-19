@@ -1581,6 +1581,8 @@ string,"{""key"":""value""}"
 	for _, f := range fixtures {
 		f := f
 		do := func(t *testing.T, register func(d *Decoder)) {
+			t.Helper()
+
 			dec, err := NewDecoder(newCSVReader(strings.NewReader(f.in)), f.inheader...)
 			if err != nil {
 				t.Fatal(err)

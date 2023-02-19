@@ -8,6 +8,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -142,7 +143,7 @@ func TestEncoder(t *testing.T) {
 	fixtures := []struct {
 		desc    string
 		in      []any
-		regFunc []any
+		regFunc marshalersSlice
 		out     [][]string
 		err     error
 	}{
@@ -890,8 +891,8 @@ func TestEncoder(t *testing.T) {
 					Piface: ptr[any](34),
 				},
 			},
-			regFunc: []any{
-				func(int) ([]byte, error) { return []byte("int"), nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(int) ([]byte, error) { return []byte("int"), nil }),
 			},
 			out: [][]string{
 				{"Int", "Pint", "Iface", "Piface"},
@@ -912,8 +913,8 @@ func TestEncoder(t *testing.T) {
 					Piface: ptr[any](34),
 				},
 			},
-			regFunc: []any{
-				func(int) ([]byte, error) { return []byte("int"), nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(int) ([]byte, error) { return []byte("int"), nil }),
 			},
 			out: [][]string{
 				{"Int", "Pint", "Iface", "Piface"},
@@ -934,8 +935,8 @@ func TestEncoder(t *testing.T) {
 					Piface: ptr[any](ptr(34)),
 				},
 			},
-			regFunc: []any{
-				func(*int) ([]byte, error) { return []byte("int"), nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(*int) ([]byte, error) { return []byte("int"), nil }),
 			},
 			out: [][]string{
 				{"Int", "Pint", "Iface", "Piface"},
@@ -956,8 +957,8 @@ func TestEncoder(t *testing.T) {
 					Piface: ptr[any](ptr(34)),
 				},
 			},
-			regFunc: []any{
-				func(*int) ([]byte, error) { return []byte("int"), nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(*int) ([]byte, error) { return []byte("int"), nil }),
 			},
 			out: [][]string{
 				{"Int", "Pint", "Iface", "Piface"},
@@ -978,9 +979,9 @@ func TestEncoder(t *testing.T) {
 					Piface: ptr[any](ptr(34)),
 				},
 			},
-			regFunc: []any{
-				func(int) ([]byte, error) { return []byte("int"), nil },
-				func(*int) ([]byte, error) { return []byte("*int"), nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(int) ([]byte, error) { return []byte("int"), nil }),
+				marshalerFunc(func(*int) ([]byte, error) { return []byte("*int"), nil }),
 			},
 			out: [][]string{
 				{"Int", "Pint", "Iface", "Piface"},
@@ -1001,9 +1002,9 @@ func TestEncoder(t *testing.T) {
 					Piface: ptr[any](ptr(34)),
 				},
 			},
-			regFunc: []any{
-				func(int) ([]byte, error) { return []byte("int"), nil },
-				func(*int) ([]byte, error) { return []byte("*int"), nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(int) ([]byte, error) { return []byte("int"), nil }),
+				marshalerFunc(func(*int) ([]byte, error) { return []byte("*int"), nil }),
 			},
 			out: [][]string{
 				{"Int", "Pint", "Iface", "Piface"},
@@ -1026,9 +1027,9 @@ func TestEncoder(t *testing.T) {
 					PCSVTextMarshaler: &CSVTextMarshaler{},
 				},
 			},
-			regFunc: []any{
-				func(Marshaler) ([]byte, error) { return []byte("registered.marshaler"), nil },
-				func(encoding.TextMarshaler) ([]byte, error) { return []byte("registered.textmarshaler"), nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(Marshaler) ([]byte, error) { return []byte("registered.marshaler"), nil }),
+				marshalerFunc(func(encoding.TextMarshaler) ([]byte, error) { return []byte("registered.textmarshaler"), nil }),
 			},
 			out: [][]string{
 				{"CSVMarshaler", "Marshaler", "PMarshaler", "CSVTextMarshaler", "PCSVTextMarshaler", "PtrRecCSVMarshaler", "PtrRecTextMarshaler"},
@@ -1045,9 +1046,9 @@ func TestEncoder(t *testing.T) {
 					PCSVTextMarshaler: &CSVTextMarshaler{},
 				},
 			},
-			regFunc: []any{
-				func(encoding.TextMarshaler) ([]byte, error) { return []byte("registered.textmarshaler"), nil },
-				func(Marshaler) ([]byte, error) { return []byte("registered.marshaler"), nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(encoding.TextMarshaler) ([]byte, error) { return []byte("registered.textmarshaler"), nil }),
+				marshalerFunc(func(Marshaler) ([]byte, error) { return []byte("registered.marshaler"), nil }),
 			},
 			out: [][]string{
 				{"CSVTextMarshaler", "PCSVTextMarshaler"},
@@ -1064,8 +1065,8 @@ func TestEncoder(t *testing.T) {
 					PtrRecCSVMarshaler PtrRecCSVMarshaler
 				}{},
 			},
-			regFunc: []any{
-				(*PtrRecCSVMarshaler).CSV,
+			regFunc: marshalersSlice{
+				marshalerFunc((*PtrRecCSVMarshaler).CSV),
 			},
 			out: [][]string{
 				{"PtrRecCSVMarshaler"},
@@ -1080,8 +1081,8 @@ func TestEncoder(t *testing.T) {
 					Embedded14
 				}{},
 			},
-			regFunc: []any{
-				(*Embedded14).MarshalCSV,
+			regFunc: marshalersSlice{
+				marshalerFunc((*Embedded14).MarshalCSV),
 			},
 			err: &UnsupportedTypeError{
 				Type: reflect.TypeOf(Embedded14{}),
@@ -1094,8 +1095,8 @@ func TestEncoder(t *testing.T) {
 					Embedded14 Embedded14
 				}{},
 			},
-			regFunc: []any{
-				func(Marshaler) ([]byte, error) { return nil, Error },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(Marshaler) ([]byte, error) { return nil, Error }),
 			},
 			err: Error,
 		},
@@ -1106,8 +1107,8 @@ func TestEncoder(t *testing.T) {
 					A InvalidType
 				}{},
 			},
-			regFunc: []any{
-				func(*InvalidType) ([]byte, error) { return nil, Error },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(*InvalidType) ([]byte, error) { return nil, Error }),
 			},
 			err: Error,
 		},
@@ -1118,8 +1119,8 @@ func TestEncoder(t *testing.T) {
 					Embedded14
 				}{},
 			},
-			regFunc: []any{
-				func(m Marshaler) ([]byte, error) { return nil, nil },
+			regFunc: marshalersSlice{
+				marshalerFunc(func(m Marshaler) ([]byte, error) { return nil, nil }),
 			},
 			err: &UnsupportedTypeError{
 				Type: reflect.TypeOf(Embedded14{}),
@@ -1305,8 +1306,8 @@ func TestEncoder(t *testing.T) {
 					A: CSVMarshaler{Err: Error},
 				},
 			},
-			regFunc: []any{
-				CSVMarshaler.MarshalCSV,
+			regFunc: marshalersSlice{
+				marshalerFunc(CSVMarshaler.MarshalCSV),
 			},
 			err: Error,
 		},
@@ -1339,8 +1340,8 @@ func TestEncoder(t *testing.T) {
 					A: TextMarshaler{Err: Error},
 				},
 			},
-			regFunc: []any{
-				TextMarshaler.MarshalText,
+			regFunc: marshalersSlice{
+				marshalerFunc(TextMarshaler.MarshalText),
 			},
 			err: Error,
 		},
@@ -1400,14 +1401,15 @@ func TestEncoder(t *testing.T) {
 	}
 
 	for _, f := range fixtures {
-		t.Run(f.desc, func(t *testing.T) {
+		f := f
+
+		do := func(t *testing.T, fn func(*Encoder)) {
+			t.Helper()
+
 			var buf bytes.Buffer
 			w := csv.NewWriter(&buf)
 			enc := NewEncoder(w)
-
-			for _, f := range f.regFunc {
-				enc.Register(f)
-			}
+			fn(enc)
 
 			for _, v := range f.in {
 				err := enc.Encode(v)
@@ -1433,6 +1435,27 @@ func TestEncoder(t *testing.T) {
 			if buf.String() != out.String() {
 				t.Errorf("want=%s; got %s", out.String(), buf.String())
 			}
+		}
+
+		if len(f.regFunc) == 0 {
+			t.Run(f.desc, func(t *testing.T) {
+				do(t, func(e *Encoder) {})
+			})
+			continue
+		}
+
+		t.Run("old register "+f.desc, func(t *testing.T) {
+			do(t, func(enc *Encoder) {
+				for _, f := range f.regFunc {
+					enc.Register(f.RawFunc.Interface())
+				}
+			})
+		})
+
+		t.Run("new register "+f.desc, func(t *testing.T) {
+			do(t, func(enc *Encoder) {
+				enc.WithMarshalers(NewMarshalers(f.regFunc.Marshalers()...))
+			})
 		})
 	}
 
@@ -2258,7 +2281,55 @@ func TestEncoder(t *testing.T) {
 	})
 }
 
+func BenchmarkEncode(b *testing.B) {
+	b.Run("registered type", func(b *testing.B) {
+		type Foo struct {
+			A int `csv:"a"`
+		}
+
+		b.Run("old register", func(b *testing.B) {
+			var buf bytes.Buffer
+			w := csv.NewWriter(&buf)
+			enc := NewEncoder(w)
+			enc.AutoHeader = false
+
+			enc.Register(func(v int) ([]byte, error) {
+				return []byte(strconv.Itoa(v)), nil
+			})
+
+			var a Foo
+			for i := 0; i < b.N; i++ {
+				if err := enc.Encode(a); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+
+		b.Run("new register", func(b *testing.B) {
+			var buf bytes.Buffer
+			w := csv.NewWriter(&buf)
+			enc := NewEncoder(w)
+			enc.AutoHeader = false
+
+			enc.WithMarshalers(NewMarshalers(MarshalFunc(
+				func(v int) ([]byte, error) {
+					return []byte(strconv.Itoa(v)), nil
+				},
+			)))
+
+			var a Foo
+			for i := 0; i < b.N; i++ {
+				if err := enc.Encode(a); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	})
+}
+
 func encode(t *testing.T, buf *bytes.Buffer, v any, tag string) {
+	t.Helper()
+
 	w := csv.NewWriter(buf)
 	enc := NewEncoder(w)
 	enc.Tag = tag
@@ -2272,6 +2343,8 @@ func encode(t *testing.T, buf *bytes.Buffer, v any, tag string) {
 }
 
 func encodeCSV(t *testing.T, recs [][]string) string {
+	t.Helper()
+
 	var buf bytes.Buffer
 	if err := csv.NewWriter(&buf).WriteAll(recs); err != nil {
 		t.Fatalf("want err=nil; got %v", err)
@@ -2285,4 +2358,25 @@ type failingWriter struct {
 
 func (w failingWriter) Write([]string) error {
 	return w.Err
+}
+
+type marshalers struct {
+	*Marshalers
+	RawFunc reflect.Value
+}
+
+func marshalerFunc[T any](f func(T) ([]byte, error)) marshalers {
+	return marshalers{
+		Marshalers: MarshalFunc(f),
+		RawFunc:    reflect.ValueOf(f),
+	}
+}
+
+type marshalersSlice []marshalers
+
+func (ms marshalersSlice) Marshalers() (out []*Marshalers) {
+	for i := range ms {
+		out = append(out, ms[i].Marshalers)
+	}
+	return out
 }

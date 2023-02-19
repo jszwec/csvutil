@@ -172,30 +172,33 @@ func ExampleEncoder_Register() {
 		},
 	}
 
-	marshalInt := func(n *int) ([]byte, error) {
+	marshalInt := csvutil.MarshalFunc(func(n *int) ([]byte, error) {
 		if n == nil {
 			return []byte("NULL"), nil
 		}
 		return strconv.AppendInt(nil, int64(*n), 16), nil
-	}
+	})
 
-	marshalTime := func(t time.Time) ([]byte, error) {
+	marshalTime := csvutil.MarshalFunc(func(t time.Time) ([]byte, error) {
 		return t.AppendFormat(nil, time.Kitchen), nil
-	}
+	})
 
 	// all fields which implement String method will use this, unless their
 	// concrete type was already overriden.
-	marshalStringer := func(s fmt.Stringer) ([]byte, error) {
+	marshalStringer := csvutil.MarshalFunc(func(s fmt.Stringer) ([]byte, error) {
 		return []byte(s.String()), nil
-	}
+	})
+
+	marshalers := csvutil.NewMarshalers(
+		marshalInt,
+		marshalTime,
+		marshalStringer,
+	)
 
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 	enc := csvutil.NewEncoder(w)
-
-	enc.Register(marshalInt)
-	enc.Register(marshalTime)
-	enc.Register(marshalStringer)
+	enc.WithMarshalers(marshalers)
 
 	if err := enc.Encode(foos); err != nil {
 		fmt.Println("error:", err)
