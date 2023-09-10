@@ -2483,6 +2483,56 @@ s,1,3.14,true
 			t.Fatal("want err not to be nil")
 		}
 	})
+
+	t.Run("align record to header - header longer", func(t *testing.T) {
+		csvr := csv.NewReader(strings.NewReader("A,B,C\na,b"))
+		csvr.FieldsPerRecord = -1
+		dec, err := NewDecoder(csvr)
+		if err != nil {
+			t.Fatalf("want err == nil; got %v", err)
+		}
+		dec.AlignRecord = true
+
+		var data []struct {
+			A, B, C string
+		}
+		if err := dec.Decode(&data); err != nil {
+			t.Fatal("did not expect decode fail with:", err)
+		}
+
+		if len(data) != 1 {
+			t.Fatalf("expected data to be of length 1 got: %d", len(data))
+		}
+
+		if data[0].A != "a" || data[0].B != "b" || data[0].C != "" {
+			t.Errorf("expected \"a\", \"b\" and \"\"; got: %q, %q and %q", data[0].A, data[0].B, data[0].C)
+		}
+	})
+
+	t.Run("align record to header - header shorter", func(t *testing.T) {
+		csvr := csv.NewReader(strings.NewReader("A,B\na,b,c"))
+		csvr.FieldsPerRecord = -1
+		dec, err := NewDecoder(csvr)
+		if err != nil {
+			t.Fatalf("want err == nil; got %v", err)
+		}
+		dec.AlignRecord = true
+
+		var data []struct {
+			A, B string
+		}
+		if err := dec.Decode(&data); err != nil {
+			t.Fatal("did not expect decode fail with:", err)
+		}
+
+		if len(data) != 1 {
+			t.Fatalf("expected data to be of length 1 got: %d", len(data))
+		}
+
+		if data[0].A != "a" || data[0].B != "b" {
+			t.Errorf("expected \"a\" and \"b\"; got: %q and %q", data[0].A, data[0].B)
+		}
+	})
 }
 
 func BenchmarkDecode(b *testing.B) {
