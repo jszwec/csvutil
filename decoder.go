@@ -40,6 +40,15 @@ type Decoder struct {
 	// When this flag is used, Decoder will not ever return ErrFieldCount.
 	AlignRecord bool
 
+	// FailSlow, if true, allows the Decoder to continue decoding
+	// records even if errors are encountered. This provides a
+	// more lenient decoding approach, attempting to recover
+	// as much valid data as possible. If false, the Decoder
+	// stops on the first encountered error.
+	//
+	// Default: false
+	FailSlow bool
+
 	// If not nil, Map is a function that is called for each field in the csv
 	// record before decoding the data. It allows mapping certain string values
 	// for specific columns or types to a known format. Decoder calls Map with
@@ -352,7 +361,10 @@ func (d *Decoder) decodeSlice(slice reflect.Value) error {
 
 	slice.SetLen(0)
 
-	var c int
+	var (
+		c    int
+		errs []error
+	)
 	for ; ; c++ {
 		v := reflect.New(typ)
 
@@ -368,8 +380,18 @@ func (d *Decoder) decodeSlice(slice reflect.Value) error {
 		// was partially decoded due to error. This is how JSON pkg does it.
 		slice.Set(reflect.Append(slice, v.Elem()))
 		if err != nil {
+			if d.FailSlow {
+				if e, ok := err.(interface{ Unwrap() []error }); ok {
+					errs = append(errs, e.Unwrap()...)
+				}
+				continue
+			}
 			return err
 		}
+	}
+
+	if len(errs) != 0 {
+		return errors.Join(errs...)
 	}
 
 	slice.Set(slice.Slice3(0, c, c))
@@ -383,7 +405,10 @@ func (d *Decoder) decodeArray(v reflect.Value) error {
 
 	l := v.Len()
 
-	var i int
+	var (
+		i    int
+		errs []error
+	)
 	for ; i < l; i++ {
 		if err := d.decodeStruct(indirect(v.Index(i))); err == io.EOF {
 			if i == 0 {
@@ -391,8 +416,18 @@ func (d *Decoder) decodeArray(v reflect.Value) error {
 			}
 			break
 		} else if err != nil {
+			if d.FailSlow {
+				if e, ok := err.(interface{ Unwrap() []error }); ok {
+					errs = append(errs, e.Unwrap()...)
+				}
+				continue
+			}
 			return err
 		}
+	}
+
+	if len(errs) != 0 {
+		return errors.Join(errs...)
 	}
 
 	zero := reflect.Zero(v.Type().Elem())
@@ -429,6 +464,7 @@ func (d *Decoder) unmarshal(record []string, v reflect.Value) error {
 		return err
 	}
 
+	var errs []error
 fieldLoop:
 	for _, f := range fields {
 		isBlank := record[f.columnIndex] == ""
@@ -477,8 +513,17 @@ fieldLoop:
 		}
 
 		if err := f.decodeFunc(s, fv); err != nil {
-			return wrapDecodeError(d.r, d.header[f.columnIndex], f.columnIndex, err)
+			wrapErr := wrapDecodeError(d.r, d.header[f.columnIndex], f.columnIndex, err)
+			if d.FailSlow {
+				errs = append(errs, wrapErr)
+				continue
+			}
+			return wrapErr
 		}
+	}
+
+	if len(errs) != 0 {
+		return errors.Join(errs...)
 	}
 	return nil
 }

@@ -2533,6 +2533,192 @@ s,1,3.14,true
 			t.Errorf("expected \"a\" and \"b\"; got: %q and %q", data[0].A, data[0].B)
 		}
 	})
+
+	t.Run("fail slow", func(t *testing.T) {
+
+		type typeA struct {
+			Int1 int `csv:"int1"`
+			Int2 int `csv:"int2"`
+		}
+
+		testFixtures := []struct {
+			desc           string
+			in             string
+			unmarshalers   unmarshalersSlice
+			out            func() any
+			expected       any
+			expectedRecord []string
+			inheader       []string
+			header         []string
+			unused         []int
+			err            error
+		}{
+			{
+				desc: "struct type - unmarshal err at line 1 column 1",
+				in:   "int1,int2\na,1",
+				out:  func() any { return &typeA{} },
+				err: errors.Join(
+					&DecodeError{
+						Field:  "int1",
+						Line:   2,
+						Column: 1,
+						Err:    &UnmarshalTypeError{Value: "a", Type: reflect.TypeOf(int(0))},
+					},
+				),
+			},
+			{
+				desc: "struct type - unmarshal err at line 1 column 1 and column n",
+				in:   "int1,int2\na,b",
+				out:  func() any { return &typeA{} },
+				err: errors.Join(
+					&DecodeError{
+						Field:  "int1",
+						Line:   2,
+						Column: 1,
+						Err:    &UnmarshalTypeError{Value: "a", Type: reflect.TypeOf(int(0))},
+					},
+					&DecodeError{
+						Field:  "int2",
+						Line:   2,
+						Column: 3,
+						Err:    &UnmarshalTypeError{Value: "b", Type: reflect.TypeOf(int(0))},
+					},
+				),
+			},
+			{
+				desc: "slice type - unmarshal err with multiple row",
+				in:   "int1,int2\na,b\nc,d",
+				out:  func() any { return &[]typeA{} },
+				err: errors.Join(
+					&DecodeError{
+						Field:  "int1",
+						Line:   2,
+						Column: 1,
+						Err:    &UnmarshalTypeError{Value: "a", Type: reflect.TypeOf(int(0))},
+					},
+					&DecodeError{
+						Field:  "int2",
+						Line:   2,
+						Column: 3,
+						Err:    &UnmarshalTypeError{Value: "b", Type: reflect.TypeOf(int(0))},
+					},
+					&DecodeError{
+						Field:  "int1",
+						Line:   3,
+						Column: 1,
+						Err:    &UnmarshalTypeError{Value: "c", Type: reflect.TypeOf(int(0))},
+					},
+					&DecodeError{
+						Field:  "int2",
+						Line:   3,
+						Column: 3,
+						Err:    &UnmarshalTypeError{Value: "d", Type: reflect.TypeOf(int(0))},
+					},
+				),
+			},
+			{
+				desc: "array type - unmarshal err with multiple row",
+				in:   "int1,int2\na,b\nc,d",
+				out:  func() any { return &[2]typeA{} },
+				err: errors.Join(
+					&DecodeError{
+						Field:  "int1",
+						Line:   2,
+						Column: 1,
+						Err:    &UnmarshalTypeError{Value: "a", Type: reflect.TypeOf(int(0))},
+					},
+					&DecodeError{
+						Field:  "int2",
+						Line:   2,
+						Column: 3,
+						Err:    &UnmarshalTypeError{Value: "b", Type: reflect.TypeOf(int(0))},
+					},
+					&DecodeError{
+						Field:  "int1",
+						Line:   3,
+						Column: 1,
+						Err:    &UnmarshalTypeError{Value: "c", Type: reflect.TypeOf(int(0))},
+					},
+					&DecodeError{
+						Field:  "int2",
+						Line:   3,
+						Column: 3,
+						Err:    &UnmarshalTypeError{Value: "d", Type: reflect.TypeOf(int(0))},
+					},
+				),
+			},
+		}
+
+		testFixtures = append(testFixtures, fixtures...)
+
+		for _, f := range testFixtures {
+			f := f
+			do := func(t *testing.T, register func(d *Decoder)) {
+				t.Helper()
+
+				dec, err := NewDecoder(newCSVReader(strings.NewReader(f.in)), f.inheader...)
+				if err != nil {
+					t.Fatal(err)
+				}
+				dec.FailSlow = true
+
+				register(dec)
+
+				dst := f.out()
+
+				err = dec.Decode(&dst)
+				if f.err != nil {
+					if !checkErr(f.err, err) {
+						t.Errorf("want err=%v; got %v", f.err, err)
+					}
+					return
+				}
+
+				if err != nil {
+					t.Errorf("want err=nil; got %v", err)
+				}
+
+				if !reflect.DeepEqual(dec.Record(), f.expectedRecord) {
+					t.Errorf("want rec=%q; got %q", f.expectedRecord, dec.Record())
+				}
+
+				if !reflect.DeepEqual(dst, f.expected) {
+					t.Errorf("want %#v; got %#v", f.expected, dst)
+				}
+
+				if !reflect.DeepEqual(dec.Unused(), f.unused) {
+					t.Errorf("want unused=%v; got %v", f.unused, dec.Unused())
+				}
+
+				if !reflect.DeepEqual(dec.Header(), f.header) {
+					t.Errorf("want header=%v; got %v", f.header, dec.Header())
+				}
+			}
+
+			if len(f.unmarshalers) > 0 {
+				t.Run(f.desc+" old register", func(t *testing.T) {
+					do(t, func(d *Decoder) {
+						for _, u := range f.unmarshalers {
+							d.Register(u.RawFunc.Interface())
+						}
+					})
+				})
+
+				t.Run(f.desc+" new register", func(t *testing.T) {
+					do(t, func(d *Decoder) {
+						d.WithUnmarshalers(NewUnmarshalers(f.unmarshalers.Unmarshalers()...))
+					})
+				})
+
+				continue
+			}
+
+			t.Run(f.desc, func(t *testing.T) {
+				do(t, func(*Decoder) {})
+			})
+		}
+
+	})
 }
 
 func BenchmarkDecode(b *testing.B) {
