@@ -1960,14 +1960,32 @@ func TestEncoder(t *testing.T) {
 				},
 			},
 			{
-				desc: "no auto header on empty slice",
+				desc: "auto header on empty slice",
 				in:   []TypeI{},
-				out:  [][]string{},
+				out: [][]string{
+					{"String", "int"},
+				},
 			},
 			{
-				desc: "no auto header on empty array",
+				desc: "auto header on empty array",
 				in:   [0]TypeI{},
-				out:  [][]string{},
+				out: [][]string{
+					{"String", "int"},
+				},
+			},
+			{
+				desc: "auto header on empty slice with ptr elements",
+				in:   []*TypeI{},
+				out: [][]string{
+					{"String", "int"},
+				},
+			},
+			{
+				desc: "auto header on empty array with ptr elements",
+				in:   [0]*TypeI{},
+				out: [][]string{
+					{"String", "int"},
+				},
 			},
 			{
 				desc: "disallow double slice",
@@ -2201,6 +2219,50 @@ func TestEncoder(t *testing.T) {
 			})
 			if expected != buf.String() {
 				t.Errorf("want=%q; got %q", expected, buf.String())
+			}
+		})
+
+		t.Run("empty slice", func(t *testing.T) {
+			fixtures := []struct {
+				desc       string
+				autoHeader bool
+				out        [][]string
+			}{
+				{
+					desc:       "with autoheader",
+					autoHeader: true,
+					out: [][]string{
+						{"A", "B", "C"},
+					},
+				},
+				{
+					desc:       "without autoheader",
+					autoHeader: false,
+					out:        [][]string{},
+				},
+			}
+
+			for _, f := range fixtures {
+				t.Run(f.desc, func(t *testing.T) {
+					type Foo struct {
+						A string
+						B string
+						C string
+					}
+
+					var buf bytes.Buffer
+					w := csv.NewWriter(&buf)
+					enc := NewEncoder(w)
+					enc.AutoHeader = f.autoHeader
+					enc.Encode([]Foo{})
+
+					w.Flush()
+
+					expected := encodeCSV(t, f.out)
+					if expected != buf.String() {
+						t.Errorf("want=%s; got %s", expected, buf.String())
+					}
+				})
 			}
 		})
 	})
