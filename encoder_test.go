@@ -1779,6 +1779,46 @@ func TestEncoder(t *testing.T) {
 				},
 			},
 			{
+				desc: "struct slice",
+				in:   []TypeF{},
+				out: [][]string{
+					{
+						"int",
+						"pint",
+						"int8",
+						"pint8",
+						"int16",
+						"pint16",
+						"int32",
+						"pint32",
+						"int64",
+						"pint64",
+						"uint",
+						"puint",
+						"uint8",
+						"puint8",
+						"uint16",
+						"puint16",
+						"uint32",
+						"puint32",
+						"uint64",
+						"puint64",
+						"float32",
+						"pfloat32",
+						"float64",
+						"pfloat64",
+						"string",
+						"pstring",
+						"bool",
+						"pbool",
+						"interface",
+						"pinterface",
+						"binary",
+						"pbinary",
+					},
+				},
+			},
+			{
 				desc: "ptr to nil interface",
 				in:   &nilIface,
 				err:  &UnsupportedTypeError{Type: reflect.ValueOf(&nilIface).Type().Elem()},
@@ -1960,32 +2000,14 @@ func TestEncoder(t *testing.T) {
 				},
 			},
 			{
-				desc: "auto header on empty slice",
+				desc: "no auto header on empty slice",
 				in:   []TypeI{},
-				out: [][]string{
-					{"String", "int"},
-				},
+				out:  [][]string{},
 			},
 			{
-				desc: "auto header on empty array",
+				desc: "no auto header on empty array",
 				in:   [0]TypeI{},
-				out: [][]string{
-					{"String", "int"},
-				},
-			},
-			{
-				desc: "auto header on empty slice with ptr elements",
-				in:   []*TypeI{},
-				out: [][]string{
-					{"String", "int"},
-				},
-			},
-			{
-				desc: "auto header on empty array with ptr elements",
-				in:   [0]*TypeI{},
-				out: [][]string{
-					{"String", "int"},
-				},
+				out:  [][]string{},
 			},
 			{
 				desc: "disallow double slice",
@@ -2219,50 +2241,6 @@ func TestEncoder(t *testing.T) {
 			})
 			if expected != buf.String() {
 				t.Errorf("want=%q; got %q", expected, buf.String())
-			}
-		})
-
-		t.Run("empty slice", func(t *testing.T) {
-			fixtures := []struct {
-				desc       string
-				autoHeader bool
-				out        [][]string
-			}{
-				{
-					desc:       "with autoheader",
-					autoHeader: true,
-					out: [][]string{
-						{"A", "B", "C"},
-					},
-				},
-				{
-					desc:       "without autoheader",
-					autoHeader: false,
-					out:        [][]string{},
-				},
-			}
-
-			for _, f := range fixtures {
-				t.Run(f.desc, func(t *testing.T) {
-					type Foo struct {
-						A string
-						B string
-						C string
-					}
-
-					var buf bytes.Buffer
-					w := csv.NewWriter(&buf)
-					enc := NewEncoder(w)
-					enc.AutoHeader = f.autoHeader
-					enc.Encode([]Foo{})
-
-					w.Flush()
-
-					expected := encodeCSV(t, f.out)
-					if expected != buf.String() {
-						t.Errorf("want=%s; got %s", expected, buf.String())
-					}
-				})
 			}
 		})
 	})

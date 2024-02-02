@@ -340,9 +340,6 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 
 func (e *Encoder) encodeArray(v reflect.Value) error {
 	l := v.Len()
-	if l == 0 && e.AutoHeader && e.noHeader {
-		return e.encodeHeader(walkType(v.Type().Elem()))
-	}
 	for i := 0; i < l; i++ {
 		if err := e.encodeStruct(walkValue(v.Index(i))); err != nil {
 			return err
