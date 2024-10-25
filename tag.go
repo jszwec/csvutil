@@ -14,8 +14,22 @@ type tag struct {
 	inline    bool
 }
 
+// credit to Pascal de Kloe on stackexchange for this function
+// https://codereview.stackexchange.com/a/280193
+func splitEscapedString(s, separator, escapeString string) []string {
+	a := strings.Split(s, separator)
+
+	for i := len(a) - 2; i >= 0; i-- {
+		if strings.HasSuffix(a[i], escapeString) {
+			a[i] = a[i][:len(a[i])-len(escapeString)] + separator + a[i+1]
+			a = append(a[:i+1], a[i+2:]...)
+		}
+	}
+	return a
+}
+
 func parseTag(tagname string, field reflect.StructField) (t tag) {
-	tags := strings.Split(field.Tag.Get(tagname), ",")
+	tags := splitEscapedString(field.Tag.Get(tagname), ",", "\\")
 	if len(tags) == 1 && tags[0] == "" {
 		t.name = field.Name
 		t.empty = true
