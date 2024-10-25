@@ -10,9 +10,9 @@ import (
 func ExampleHeader() {
 	type User struct {
 		ID    int
-		Name  string
-		Age   int `csv:",omitempty"`
-		State int `csv:"-"`
+		Name  string `csv:"Last Name\\, First Name"`
+		Age   int    `csv:",omitempty"`
+		State int    `csv:"-"`
 		City  string
 		ZIP   string `csv:"zip_code"`
 	}
@@ -24,5 +24,5 @@ func ExampleHeader() {
 
 	fmt.Println(header)
 	// Output:
-	// [ID Name Age City zip_code]
+	// [ID Last Name, First Name Age City zip_code]
 }
