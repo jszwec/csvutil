@@ -42,7 +42,7 @@ func (fs fields) Less(i, j int) bool {
 
 type typeKey struct {
 	tag string
-	reflect.Type
+	typ reflect.Type
 }
 
 type fieldMap map[string]fields
@@ -92,7 +92,7 @@ func buildFields(k typeKey) fields {
 		tag
 	}
 
-	q := fields{{typ: k.Type}}
+	q := fields{{typ: k.typ}}
 	visited := make(map[key]struct{})
 	fm := make(fieldMap)
 
