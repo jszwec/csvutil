@@ -1979,6 +1979,96 @@ s,1,3.14,true
 			}
 		})
 
+		t.Run("replaced something with empty", func(t *testing.T) {
+			data := []byte("F1,F2,F3,F4,F5,F6\nnull,omit,-,n/a,dash,whatever")
+			dec, err := NewDecoder(newCSVReader(bytes.NewReader(data)))
+			if err != nil {
+				t.Fatalf("want err=nil; got %v", err)
+			}
+			dec.Map = func(_, _ string, _ any) string { return "" }
+			var out = struct {
+				F1 string
+				F2 []byte
+				F3 *string
+				F4 string  `csv:",omitempty"`
+				F5 *string `csv:",omitempty"`
+				F6 *int
+			}{
+				F1: "stale",
+				F2: []byte("stale"),
+				F3: ptr("stale"),
+				F4: "keep",
+				F5: ptr("keep"),
+				F6: ptr(42),
+			}
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if out.F1 != "" {
+				t.Errorf("want F1 to be empty but is %q", out.F1)
+			}
+			if !bytes.Equal(out.F2, []byte{}) {
+				t.Errorf("want F2 to be empty but is %q", out.F2)
+			}
+			if out.F3 != nil {
+				t.Errorf("want F3 to be nil but is %q", *out.F3)
+			}
+			if out.F4 != "keep" {
+				t.Errorf("want F4 to be %q but is %q", "keep", out.F4)
+			}
+			if out.F5 == nil {
+				t.Errorf("want F5 to be %q but is nil", "keep")
+			} else if *out.F5 != "keep" {
+				t.Errorf("want F5 to be %q but is %q", "keep", *out.F5)
+			}
+			if out.F6 != nil {
+				t.Errorf("want F6 to be nil but is %d", *out.F6)
+			}
+		})
+
+		t.Run("replaced empty with something", func(t *testing.T) {
+			data := []byte("F1,F2,F3,F4,F5\n,,,,")
+			dec, err := NewDecoder(newCSVReader(bytes.NewReader(data)))
+			if err != nil {
+				t.Fatalf("want err=nil; got %v", err)
+			}
+			dec.Map = func(_, _ string, _ any) string { return "42" }
+			var out = struct {
+				F1 string
+				F2 int
+				F3 int `csv:",omitempty"`
+				F4 *int
+				F5 *int
+			}{
+				F1: "stale",
+				F2: -1,
+				F3: -1,
+				F4: ptr(-1),
+			}
+			if err := dec.Decode(&out); err != nil {
+				t.Errorf("want err=nil; got %v", err)
+			}
+			if out.F1 != "42" {
+				t.Errorf("want F1 to be %q but is %q", "42", out.F1)
+			}
+			if out.F2 != 42 {
+				t.Errorf("want F2 to be %d but is %d", 42, out.F2)
+			}
+			if out.F3 != 42 {
+				t.Errorf("want F3 to be %d but is %d", 42, out.F3)
+			}
+			if out.F4 == nil {
+				t.Errorf("want F4 to be %d but is nil", 42)
+			} else if *out.F4 != 42 {
+				t.Errorf("want F4 to be %d but is %d", 42, *out.F4)
+			}
+			if out.F5 == nil {
+				t.Errorf("want F5 to be %d but is nil", 42)
+			} else if *out.F5 != 42 {
+				t.Errorf("want F5 to be %d but is %d", 42, *out.F5)
+			}
+		})
+
 		t.Run("unmarshaler types", func(t *testing.T) {
 			m := func(field, col string, v any) string {
 				if _, ok := v.(CSVUnmarshaler); ok && field == "" {
@@ -2004,9 +2094,9 @@ s,1,3.14,true
 
 			expected := CustomUnmarshalers{
 				CSVUnmarshaler:   CSVUnmarshaler{String: "unmarshalCSV:csv_unmarshaler"},
-				PCSVUnmarshaler:  nil,
+				PCSVUnmarshaler:  &CSVUnmarshaler{String: "unmarshalCSV:csv_unmarshaler"},
 				TextUnmarshaler:  TextUnmarshaler{String: "unmarshalText:text_unmarshaler"},
-				PTextUnmarshaler: nil,
+				PTextUnmarshaler: &TextUnmarshaler{String: "unmarshalText:text_unmarshaler"},
 			}
 
 			if !reflect.DeepEqual(out, expected) {
