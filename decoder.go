@@ -431,7 +431,20 @@ func (d *Decoder) unmarshal(record []string, v reflect.Value) error {
 
 fieldLoop:
 	for _, f := range fields {
-		isBlank := record[f.columnIndex] == ""
+		s := record[f.columnIndex]
+		if d.Map != nil && f.zero != nil {
+			zero := f.zero
+			if fv := walkIndex(v, f.index); fv.IsValid() {
+				if fv := walkPtr(fv); fv.Kind() == reflect.Interface && !fv.IsNil() {
+					if v := walkValue(fv); v.CanSet() {
+						zero = reflect.Zero(v.Type()).Interface()
+					}
+				}
+			}
+			s = d.Map(s, d.header[f.columnIndex], zero)
+		}
+		isBlank := s == ""
+
 		if f.tag.omitEmpty && isBlank {
 			continue
 		}
@@ -463,17 +476,6 @@ fieldLoop:
 					fv = fv.Elem() // walk pointer until we are on the the leaf.
 				}
 			}
-		}
-
-		s := record[f.columnIndex]
-		if d.Map != nil && f.zero != nil {
-			zero := f.zero
-			if fv := walkPtr(fv); fv.Kind() == reflect.Interface && !fv.IsNil() {
-				if v := walkValue(fv); v.CanSet() {
-					zero = reflect.Zero(v.Type()).Interface()
-				}
-			}
-			s = d.Map(s, d.header[f.columnIndex], zero)
 		}
 
 		if err := f.decodeFunc(s, fv); err != nil {
