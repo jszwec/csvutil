@@ -407,6 +407,7 @@ func (d *Decoder) decodeStruct(v reflect.Value) (err error) {
 	if err != nil {
 		return err
 	}
+	recordLen := len(d.record)
 
 	if len(d.record) != len(d.header) {
 		if !d.AlignRecord {
@@ -420,10 +421,10 @@ func (d *Decoder) decodeStruct(v reflect.Value) (err error) {
 		}
 	}
 
-	return d.unmarshal(d.record, v)
+	return d.unmarshal(d.record, v, recordLen)
 }
 
-func (d *Decoder) unmarshal(record []string, v reflect.Value) error {
+func (d *Decoder) unmarshal(record []string, v reflect.Value, recordLen int) error {
 	fields, err := d.fields(typeKey{d.tag(), v.Type()})
 	if err != nil {
 		return err
@@ -477,7 +478,7 @@ fieldLoop:
 		}
 
 		if err := f.decodeFunc(s, fv); err != nil {
-			return wrapDecodeError(d.r, d.header[f.columnIndex], f.columnIndex, err)
+			return wrapDecodeError(d.r, d.header[f.columnIndex], f.columnIndex, recordLen, err)
 		}
 	}
 	return nil
@@ -488,15 +489,15 @@ fieldLoop:
 //   - line number
 //   - column within record
 //
-// Line and Column info is available only if the used Reader supports 'FieldPos'
-// that is available e.g. in csv.Reader (since Go1.17).
+// Line and Column info is available only for fields present in the input record
+// if the used Reader supports 'FieldPos', e.g. csv.Reader (since Go1.17).
 //
 // The caller should use errors.As in order to fetch the original error.
-func wrapDecodeError(r Reader, field string, fieldIndex int, err error) error {
+func wrapDecodeError(r Reader, field string, fieldIndex, recordLen int, err error) error {
 	fp, ok := r.(interface {
 		FieldPos(fieldIndex int) (line, column int)
 	})
-	if !ok {
+	if !ok || fieldIndex >= recordLen {
 		return &DecodeError{
 			Field: field,
 			Err:   err,
