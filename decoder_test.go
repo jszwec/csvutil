@@ -2535,6 +2535,223 @@ s,1,3.14,true
 	})
 }
 
+func TestDecoder_AlignRecordDecodeError(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		header []string
+		value  any
+		field  string
+		line   int
+		column int
+	}{
+		{
+			name:  "missing integer",
+			input: "A,B\na\n",
+			value: new(struct {
+				A string
+				B int
+			}),
+			field: "B",
+		},
+		{
+			name:  "missing unsigned integer",
+			input: "A,B\na\n",
+			value: new(struct {
+				A string
+				B uint
+			}),
+			field: "B",
+		},
+		{
+			name:  "missing float",
+			input: "A,B\na\n",
+			value: new(struct {
+				A string
+				B float64
+			}),
+			field: "B",
+		},
+		{
+			name:  "missing boolean",
+			input: "A,B\na\n",
+			value: new(struct {
+				A string
+				B bool
+			}),
+			field: "B",
+		},
+		{
+			name:   "explicit header",
+			input:  "a\n",
+			header: []string{"A", "B"},
+			value: new(struct {
+				A string
+				B int
+			}),
+			field: "B",
+		},
+		{
+			name:  "reordered header",
+			input: "A,C,B\na,c\n",
+			value: new(struct {
+				A string
+				B int
+				C string
+			}),
+			field: "B",
+		},
+		{
+			name:  "real empty field",
+			input: "A,B\na,\n",
+			value: new(struct {
+				A string
+				B int
+			}),
+			field: "B", line: 2, column: 3,
+		},
+		{
+			name:  "real field before padding",
+			input: "A,B,C\na,bad\n",
+			value: new(struct {
+				A string
+				B int
+				C string
+			}),
+			field: "B", line: 2, column: 3,
+		},
+		{
+			name:  "real field before trimming",
+			input: "A,B\nbad,b,extra\n",
+			value: new(struct {
+				A int
+				B string
+			}),
+			field: "A", line: 2, column: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if value := recover(); value != nil {
+					t.Errorf("Decode panicked: %v", value)
+				}
+			}()
+			reader := csv.NewReader(strings.NewReader(tt.input))
+			reader.FieldsPerRecord = -1
+			decoder, err := NewDecoder(reader, tt.header...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoder.AlignRecord = true
+			err = decoder.Decode(tt.value)
+			var decodeError *DecodeError
+			if !errors.As(err, &decodeError) {
+				t.Fatalf("want DecodeError; got %v", err)
+			}
+			if decodeError.Field != tt.field || decodeError.Line != tt.line || decodeError.Column != tt.column {
+				t.Errorf("want field=%s line=%d column=%d; got %+v", tt.field, tt.line, tt.column, decodeError)
+			}
+			var typeError *UnmarshalTypeError
+			if !errors.As(err, &typeError) {
+				t.Fatalf("want wrapped UnmarshalTypeError; got %v", err)
+			}
+		})
+	}
+}
+
+func TestDecoder_AlignRecordCustomError(t *testing.T) {
+	for _, reader := range []Reader{
+		csv.NewReader(strings.NewReader("a\n")),
+		NewReader([]string{"a"}),
+	} {
+		t.Run(fmt.Sprintf("%T", reader), func(t *testing.T) {
+			defer func() {
+				if value := recover(); value != nil {
+					t.Errorf("Decode panicked: %v", value)
+				}
+			}()
+			decoder, err := NewDecoder(reader, "A", "B")
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoder.AlignRecord = true
+			customError := errors.New("custom decoding failed")
+			decoder.WithUnmarshalers(UnmarshalFunc(func(data []byte, value *int) error {
+				if len(data) != 0 {
+					t.Fatalf("want empty padded input; got %q", data)
+				}
+				return customError
+			}))
+			var value struct {
+				A string
+				B int
+			}
+			err = decoder.Decode(&value)
+			var decodeError *DecodeError
+			if !errors.As(err, &decodeError) || !errors.Is(err, customError) {
+				t.Fatalf("want DecodeError wrapping custom error; got %v", err)
+			}
+			if decodeError.Field != "B" || decodeError.Line != 0 || decodeError.Column != 0 {
+				t.Errorf("want field=B with unknown position; got %+v", decodeError)
+			}
+		})
+	}
+}
+
+func TestDecoder_AlignRecordContinuesAfterErrors(t *testing.T) {
+	reader := csv.NewReader(strings.NewReader("A,B\na\nb,invalid\nc,3\nd\n"))
+	reader.FieldsPerRecord = -1
+	reader.ReuseRecord = true
+	decoder, err := NewDecoder(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder.AlignRecord = true
+	for index, expected := range []struct {
+		line, column int
+		success      bool
+	}{
+		{},
+		{line: 3, column: 3},
+		{success: true},
+		{},
+	} {
+		t.Run(strconv.Itoa(index), func(t *testing.T) {
+			defer func() {
+				if value := recover(); value != nil {
+					t.Errorf("Decode panicked: %v", value)
+				}
+			}()
+			var value struct {
+				A string
+				B int
+			}
+			err := decoder.Decode(&value)
+			if expected.success {
+				if err != nil || value.A != "c" || value.B != 3 {
+					t.Fatalf("want c,3 without an error; got %+v, %v", value, err)
+				}
+				return
+			}
+			var decodeError *DecodeError
+			if !errors.As(err, &decodeError) {
+				t.Fatalf("want DecodeError; got %v", err)
+			}
+			if decodeError.Field != "B" || decodeError.Line != expected.line || decodeError.Column != expected.column {
+				t.Errorf("unexpected error position: %+v", decodeError)
+			}
+		})
+	}
+	var value struct {
+		A string
+		B int
+	}
+	if err := decoder.Decode(&value); err != io.EOF {
+		t.Fatalf("want EOF; got %v", err)
+	}
+}
+
 func BenchmarkDecode(b *testing.B) {
 	type A struct {
 		A int     `csv:"a"`
