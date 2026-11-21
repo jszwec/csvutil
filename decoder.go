@@ -295,10 +295,6 @@ func (d *Decoder) Register(f any) {
 		panic("csvutil: func argument type must not be an empty interface")
 	}
 
-	if d.funcMap == nil {
-		d.funcMap = make(map[reflect.Type]func([]byte, any) error)
-	}
-
 	if _, ok := d.funcMap[argType]; ok {
 		panic("csvutil: func " + typ.String() + " already registered")
 	}
@@ -325,9 +321,16 @@ func (d *Decoder) Register(f any) {
 		return err
 	}
 
-	d.funcMap[argType] = fn
+	// WithUnmarshalers may share this state with an immutable Unmarshalers value.
+	funcMap := make(map[reflect.Type]func([]byte, any) error, len(d.funcMap)+1)
+	for typ, f := range d.funcMap {
+		funcMap[typ] = f
+	}
+	funcMap[argType] = fn
+	d.funcMap = funcMap
 
 	if argType.Kind() == reflect.Interface {
+		d.ifaceFuncs = append([]ifaceDecodeFunc(nil), d.ifaceFuncs...)
 		d.ifaceFuncs = append(d.ifaceFuncs, ifaceDecodeFunc{
 			f:       fn,
 			argType: argType,

@@ -175,17 +175,20 @@ func (e *Encoder) Register(f any) {
 		argType: typ.In(0),
 	}
 
-	if e.funcMap == nil {
-		e.funcMap = make(map[reflect.Type]marshalFunc)
-	}
-
 	if _, ok := e.funcMap[argType]; ok {
 		panic("csvutil: func " + typ.String() + " already registered")
 	}
 
-	e.funcMap[argType] = wrappedFn
+	// WithMarshalers may share this state with an immutable Marshalers value.
+	funcMap := make(map[reflect.Type]marshalFunc, len(e.funcMap)+1)
+	for typ, fn := range e.funcMap {
+		funcMap[typ] = fn
+	}
+	funcMap[argType] = wrappedFn
+	e.funcMap = funcMap
 
 	if isIface {
+		e.ifaceFuncs = append([]marshalFunc(nil), e.ifaceFuncs...)
 		e.ifaceFuncs = append(e.ifaceFuncs, wrappedFn)
 	}
 }
