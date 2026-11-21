@@ -1989,6 +1989,25 @@ func TestEncoder(t *testing.T) {
 				},
 			},
 			{
+				desc: "skip nil ptr elements",
+				in: []*TypeI{
+					nil,
+					{"1", 1},
+					nil,
+					{"2", 2},
+				},
+				out: [][]string{
+					{"String", "int"},
+					{"1", "1"},
+					{"2", "2"},
+				},
+			},
+			{
+				desc: "no auto header on slice of nil ptr elements",
+				in:   [2]*TypeI{},
+				out:  [][]string{},
+			},
+			{
 				desc: "array with default val",
 				in: [2]TypeI{
 					{"1", 1},

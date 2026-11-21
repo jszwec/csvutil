@@ -379,6 +379,26 @@ func TestMarshal(t *testing.T) {
 			},
 		},
 		{
+			desc: "array with nil pointer elements",
+			v: [3]*TypeI{
+				{String: "string", Int: 10},
+				nil,
+				{String: "", Int: 0},
+			},
+			out: [][]string{
+				{"String", "int"},
+				{"string", "10"},
+				{"", ""},
+			},
+		},
+		{
+			desc: "slice of nil pointers",
+			v:    []*TypeI{nil, nil},
+			out: [][]string{
+				{"String", "int"},
+			},
+		},
+		{
 			desc: "not a slice or array",
 			v:    int64(1),
 			err:  &InvalidMarshalError{Type: reflect.TypeOf(int64(1))},
