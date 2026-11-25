@@ -123,6 +123,21 @@ func decodePtr(typ reflect.Type, funcMap map[reflect.Type]func([]byte, any) erro
 	}, nil
 }
 
+func walkInterfaceValue(v reflect.Value) reflect.Value {
+	el := v.Elem()
+	if el.Kind() == reflect.Ptr && el.IsNil() {
+		return reflect.Value{}
+	}
+	for el.Kind() == reflect.Ptr {
+		next := el.Elem()
+		if next.Kind() == reflect.Ptr && next.IsNil() {
+			return next
+		}
+		el = next
+	}
+	return el
+}
+
 func decodeInterface(funcMap map[reflect.Type]func([]byte, any) error, ifaceFuncs []ifaceDecodeFunc) decodeFunc {
 	return func(s string, v reflect.Value) error {
 		if v.NumMethod() != 0 {
@@ -137,7 +152,7 @@ func decodeInterface(funcMap map[reflect.Type]func([]byte, any) error, ifaceFunc
 			return nil
 		}
 
-		el := walkValue(v)
+		el := walkInterfaceValue(v)
 		if !el.CanSet() {
 			if el.IsValid() {
 				// we may get a value receiver unmarshalers or registered funcs

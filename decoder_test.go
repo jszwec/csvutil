@@ -943,6 +943,20 @@ string,"{""key"":""value""}"
 			header:         []string{"Int", "Float", "String", "Bool", "Unmarshaler", "DoublePtr"},
 		},
 		{
+			desc: "interface with pointer to nil pointer",
+			in:   "DoublePtr\n100",
+			out: func() any {
+				var inner *int
+				return &struct{ DoublePtr any }{DoublePtr: &inner}
+			},
+			expected: func() any {
+				inner := ptr(100)
+				return &struct{ DoublePtr any }{DoublePtr: &inner}
+			}(),
+			expectedRecord: []string{"100"},
+			header:         []string{"DoublePtr"},
+		},
+		{
 			desc: "initialized ptr interface fields",
 			in:   "Int,Float,String,Bool,Unmarshaler\n10,3.14,string,true,lol",
 			out: func() any {
